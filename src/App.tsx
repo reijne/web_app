@@ -1,28 +1,28 @@
-import React from 'react';
-
-import logo from './logo.svg';
-
-import './App.css';
+import React, { useState } from 'react'
+import Home from './Home/Home'
+import Projects from './Projects'
+import Footer from './Footer'
 
 function App() {
-    return (
-        <div className="App">
-            <header className="App-header">
-                <img src={logo} className="App-logo" alt="logo" />
-                <p>
-                    NEEJ <code>src/App.tsx</code> and save to reload.
-                </p>
-                <a
-                    className="App-link"
-                    href="https://reactjs.org"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                >
-                    Learn React
-                </a>
-            </header>
-        </div>
-    );
+  const [currentPage, setCurrentPage] = useState('home')
+
+  const renderPage = () => {
+    switch (currentPage) {
+      case 'projects':
+        return <Projects />
+      case 'home':
+        return <Home setCurrentPage={setCurrentPage} />
+      default:
+        return <Home setCurrentPage={setCurrentPage} />
+    }
+  }
+
+  return (
+    <div className="App">
+      {renderPage()}
+      <Footer />
+    </div>
+  )
 }
 
-export default App;
+export default App
