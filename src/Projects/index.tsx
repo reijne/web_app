@@ -1,17 +1,16 @@
 import React, { useState } from 'react'
 import './Projects.css'
+import ColorWheel from './ColorWheel'
 
 function Projects() {
   const [selectedProject, setSelectedProject] = useState<string | null>(null)
 
   const renderProject = () => {
     switch (selectedProject) {
-      case 'project1':
-        return <Project1 />
-      case 'project2':
-        return <Project2 />
+      case 'colorWheel':
+        return <ColorWheel />
       default:
-        return <DefaultProject />
+        return <ColorWheel />
     }
   }
 
@@ -35,31 +34,19 @@ function Sidebar({
       </a>
       <button
         className="sidebar-link"
-        onClick={() => onSelectProject('project1')}
+        onClick={() => onSelectProject('colorWheel')}
       >
-        Project 1
+        Color Wheel
       </button>
-      <button
+      {/* <button
         className="sidebar-link"
         onClick={() => onSelectProject('project2')}
       >
         Project 2
-      </button>
+      </button> */}
       {/* Add more project buttons here */}
     </div>
   )
-}
-
-function DefaultProject() {
-  return <div>Select a project from the sidebar.</div>
-}
-
-function Project1() {
-  return <div>Project 1 Content</div>
-}
-
-function Project2() {
-  return <div>Project 2 Content</div>
 }
 
 export default Projects

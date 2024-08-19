@@ -1,0 +1,30 @@
+.color-wheel-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.color-display {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  font-size: 18px;
+  text-align: left;
+  margin: 1rem;
+}
+
+.selected-color-circle {
+  height: auto;
+  width: auto;
+  border: 2px solid black;
+  border-radius: 50%;
+  margin: 1rem;
+}
+
+.color-display-value-hidden {
+  color: transparent;
+  height: 0;
+}
