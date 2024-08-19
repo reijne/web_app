@@ -1,8 +1,10 @@
-import { EmailLogo, GithubLogo, LinkedInLogo } from './logos'
+import { EmailLogo, GithubLogo, LinkedInLogo } from '../logos'
+
+import './Footer.css'
 
 function Footer() {
   return (
-    <footer className="Home-footer">
+    <footer className="Footer">
       <GithubLogo />
       <LinkedInLogo />
       <EmailLogo />

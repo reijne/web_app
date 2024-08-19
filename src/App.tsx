@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import Home from './Home/Home'
+import Home from './Home'
 import Projects from './Projects'
 import Footer from './Footer'
 
