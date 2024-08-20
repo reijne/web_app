@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import './Projects.css'
 import ColorWheel from './ColorWheel'
+import Pong from './Pong'
 
 function Projects() {
   const [selectedProject, setSelectedProject] = useState<string | null>(null)
@@ -9,6 +10,8 @@ function Projects() {
     switch (selectedProject) {
       case 'colorWheel':
         return <ColorWheel />
+      case 'pong':
+        return <Pong />
       default:
         return <ColorWheel />
     }
@@ -38,9 +41,9 @@ function Sidebar({
       >
         Color Wheel
       </button>
-      {/* <button className="sidebar-link" onClick={() => onSelectProject('pong')}>
+      <button className="sidebar-link" onClick={() => onSelectProject('pong')}>
         Pong
-      </button> */}
+      </button>
       {/* Add more project buttons here */}
     </div>
   )
