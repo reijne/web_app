@@ -68,7 +68,6 @@ const Pong: React.FC = () => {
       nextBallY = ballSize + 1
       setBallVelocityY(-ballVelocityY)
     } else if (nextBallY >= canvasHeight - ballSize) {
-      // Ensure ball stays within the bottom boundary
       nextBallY = canvasHeight - ballSize - 1
       setBallVelocityY(-ballVelocityY)
     }
@@ -82,13 +81,9 @@ const Pong: React.FC = () => {
         nextBallY >= player2Y &&
         nextBallY <= player2Y + paddleHeight)
     ) {
-      // Reflect the ball's X velocity
       setBallVelocityX((v) => -v)
-
-      // Add a small random angle to the Y velocity to make the game more dynamic
       setBallVelocityY((v) => v + (Math.random() - 0.5) * 2)
 
-      // Adjust the ball's X position so it doesn't get stuck inside the paddle
       if (nextBallX - ballSize <= paddleWidth) {
         nextBallX = paddleWidth + ballSize + 1
       } else if (nextBallX + ballSize >= canvasWidth - paddleWidth) {
@@ -140,12 +135,23 @@ const Pong: React.FC = () => {
   }
 
   return (
-    <canvas
-      className="Pong-canvas"
-      ref={canvasRef}
-      width={canvasWidth}
-      height={canvasHeight}
-    />
+    <div className="Pong-container">
+      <div>
+        <canvas
+          className="Pong-canvas"
+          ref={canvasRef}
+          width={canvasWidth}
+          height={canvasHeight}
+        />
+      </div>
+
+      <div>
+        <p>
+          <strong>Player 1:</strong> W (Up), S (Down) |{' '}
+          <strong>Player 2:</strong> Up Arrow (Up), Down Arrow (Down)
+        </p>
+      </div>
+    </div>
   )
 }
 
