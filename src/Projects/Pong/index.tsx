@@ -37,18 +37,25 @@ const Pong: React.FC = () => {
   const frameTime = useFrameTime()
 
   const movePaddles = (e: KeyboardEvent) => {
-    if (e.key === 'w') setPlayer1Y((y) => Math.max(y - 10, 0))
-    if (e.key === 's')
-      setPlayer1Y((y) => Math.min(y + 10, canvasHeight - paddleHeight))
-    if (e.key === 'ArrowUp') setPlayer2Y((y) => Math.max(y - 10, 0))
-    if (e.key === 'ArrowDown')
-      setPlayer2Y((y) => Math.min(y + 10, canvasHeight - paddleHeight))
+    if (ballX < canvasWidth / 2) {
+      if (e.key === 'w') {
+        setPlayer1Y((y) => Math.max(y - 10, 0))
+      }
+      if (e.key === 's') {
+        setPlayer1Y((y) => Math.min(y + 10, canvasHeight - paddleHeight))
+      }
+    }
+    if (ballX > canvasWidth / 2) {
+      if (e.key === 'ArrowUp') setPlayer2Y((y) => Math.max(y - 10, 0))
+      if (e.key === 'ArrowDown')
+        setPlayer2Y((y) => Math.min(y + 10, canvasHeight - paddleHeight))
+    }
   }
 
   useEffect(() => {
     window.addEventListener('keydown', movePaddles)
     return () => window.removeEventListener('keydown', movePaddles)
-  }, [])
+  }, [ballX])
 
   useEffect(() => {
     if (!canvasRef.current) return
@@ -111,12 +118,23 @@ const Pong: React.FC = () => {
     // Clear canvas
     ctx.clearRect(0, 0, canvasWidth, canvasHeight)
 
+    // Draw middle line
+    ctx.strokeStyle = 'white'
+    ctx.setLineDash([10, 15]) // Dashes of 10px and gaps of 15px
+    ctx.beginPath()
+    ctx.moveTo(canvasWidth / 2, 0)
+    ctx.lineTo(canvasWidth / 2, canvasHeight)
+    ctx.stroke()
+
     // Draw paddles
-    ctx.fillStyle = 'white'
+    ctx.fillStyle = ballX < canvasWidth / 2 ? 'white' : 'red'
     ctx.fillRect(0, player1Y, paddleWidth, paddleHeight)
+
+    ctx.fillStyle = ballX > canvasWidth / 2 ? 'white' : 'red'
     ctx.fillRect(canvasWidth - paddleWidth, player2Y, paddleWidth, paddleHeight)
 
     // Draw ball
+    ctx.fillStyle = 'white'
     ctx.beginPath()
     ctx.arc(ballX, ballY, ballSize, 0, Math.PI * 2)
     ctx.fill()
@@ -151,6 +169,15 @@ const Pong: React.FC = () => {
           <strong>Player 2:</strong> Up Arrow (Up), Down Arrow (Down)
         </p>
       </div>
+      <button
+        className="Pong-reset-score-button"
+        onClick={() => {
+          setPlayer1Score(0)
+          setPlayer2Score(0)
+        }}
+      >
+        Reset score
+      </button>
     </div>
   )
 }

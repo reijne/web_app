@@ -42,7 +42,7 @@ function Sidebar({
         Color Wheel
       </button>
       <button className="sidebar-link" onClick={() => onSelectProject('pong')}>
-        Pong
+        Locking Pong
       </button>
       {/* Add more project buttons here */}
     </div>

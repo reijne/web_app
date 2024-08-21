@@ -8,10 +8,23 @@
 
 .Pong-canvas {
   background-color: black;
+  border: 1px solid black;
 
   canvas {
     display: block;
     margin: 0 auto;
     background-color: black;
   }
+}
+
+.Pong-reset-score-button {
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  margin-top: 2rem;
+  padding: 10px 20px;
+  font-size: 1.2em;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: background-color 0.3s ease;
 }
