@@ -143,6 +143,7 @@ const ColorWheel: React.FC = () => {
   } | null>(null)
   const [canvasSize, setCanvasSize] = useState<number>(0)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const isDragging = useRef<boolean>(false)
 
   useEffect(() => {
     // Calculate canvas size as % of the window's width
@@ -155,20 +156,41 @@ const ColorWheel: React.FC = () => {
     }
 
     window.addEventListener('resize', handleResize)
-    handleResize() // Initial size
+    handleResize()
 
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
   useEffect(() => {
     if (canvasRef.current && canvasSize > 0) {
-      canvasRef.current.width = canvasSize * 2 // Set canvas width
-      canvasRef.current.height = canvasSize * 2 // Set canvas height
+      canvasRef.current.width = canvasSize * 2
+      canvasRef.current.height = canvasSize * 2
       drawColorWheel(canvasRef.current, canvasSize)
     }
   }, [canvasSize])
 
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    selectColorAtMousePosition(event)
+  }
+
+  const handleMouseDown = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    isDragging.current = true
+    selectColorAtMousePosition(event)
+  }
+
+  const handleMouseMove = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    if (isDragging.current) {
+      selectColorAtMousePosition(event)
+    }
+  }
+
+  const handleMouseUp = () => {
+    isDragging.current = false
+  }
+
+  const selectColorAtMousePosition = (
+    event: React.MouseEvent<HTMLCanvasElement>
+  ) => {
     if (canvasRef.current) {
       const rect = canvasRef.current.getBoundingClientRect()
       const x = event.clientX - rect.left
@@ -195,6 +217,10 @@ const ColorWheel: React.FC = () => {
       >
         <canvas
           ref={canvasRef}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
           onClick={handleCanvasClick}
           style={{ borderRadius: '50%', cursor: 'pointer' }}
         />
