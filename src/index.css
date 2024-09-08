@@ -15,6 +15,9 @@ body {
   --secondary-color: #1bccbd;
   --secondary-color-dark: #099ea6;
   --off-black: #333333;
+  --gray: #c6c6c6;
+  --light-gray: #e0e0e0;
+  --lightest-gray: #f4f4f4;
 }
 
 #root {
@@ -29,4 +32,10 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: center;
+}
+
+.icon {
+  font-size: 2rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
 }

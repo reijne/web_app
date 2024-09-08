@@ -1,0 +1,98 @@
+.grid-container {
+  position: relative; /* Important to contain the absolutely positioned SVG */
+  display: flex;
+  flex-direction: column;
+  /* align-items: center; */
+  /* justify-content: center; */
+  margin: 20px;
+}
+
+.grid-container .grid {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  position: relative; /* Needed to ensure the SVG overlays properly */
+  z-index: 1; /* Ensures grid is below the lines */
+}
+
+.grid-container .grid-row {
+  display: flex;
+}
+
+.grid-container .grid-node {
+  box-sizing: border-box;
+  width: 8px; /* Explicit width for nodes */
+  height: 8px; /* Explicit height for nodes */
+  background-color: var(--gray);
+  margin: 10px; /* Small margin between nodes */
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.grid-container .selected {
+  background-color: var(--secondary-color);
+}
+
+.grid-container .line-canvas {
+  position: absolute;
+  top: 0;
+  left: 0; /* Align SVG to the grid */
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* Ensure it doesn't interfere with mouse events */
+  z-index: 2; /* Ensures lines are drawn on top of the grid */
+}
+
+.grid-container .controls {
+  display: flex;
+  flex-shrink: 1;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+  padding: 10px;
+  background-color: rgba(255, 255, 255, 0.8);
+  border-radius: 5px;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.grid-container .grid-size-input label {
+  margin-right: 5px;
+  font-weight: bold;
+}
+
+.grid-container .grid-size-input input {
+  width: 50px;
+  text-align: center;
+  padding: 3px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
+.grid-container button {
+  padding: 5px 10px;
+  font-size: 14px;
+  border: none;
+  background-color: var(--secondary-color);
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.grid-container button:disabled {
+  background-color: #999;
+  cursor: not-allowed;
+}
+
+.grid-container button.undo-btn::before {
+  content: '↺'; /* Unicode arrow for undo */
+  margin-right: 5px;
+}
+
+.grid-container button.redo-btn::before {
+  content: '↻'; /* Unicode arrow for redo */
+  margin-right: 5px;
+}

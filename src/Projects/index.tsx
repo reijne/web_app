@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import './Projects.css'
 import ColorWheel from './ColorWheel'
 import Pong from './Pong'
+import GridDrawer from './GridDrawer'
 
 function Projects() {
   const [selectedProject, setSelectedProject] = useState<string | null>(null)
@@ -12,6 +13,8 @@ function Projects() {
         return <ColorWheel />
       case 'pong':
         return <Pong />
+      case 'grid':
+        return <GridDrawer />
       default:
         return <ColorWheel />
     }
@@ -32,19 +35,22 @@ function Sidebar({
 }) {
   return (
     <div className="sidebar">
-      <a href="/" className="sidebar-link">
-        Home
+      <a href="/" className="sidebar-link home-link">
+        <span className="icon">🏠</span> <h2>Home</h2>
       </a>
       <button
         className="sidebar-link"
         onClick={() => onSelectProject('colorWheel')}
       >
-        Color Wheel
+        <span className="icon">🎨</span> <h3>Color Wheel</h3>
       </button>
       <button className="sidebar-link" onClick={() => onSelectProject('pong')}>
-        Locking Pong
+        <span className="icon">║</span>
+        <h3>Locking Pong</h3>
       </button>
-      {/* Add more project buttons here */}
+      <button className="sidebar-link" onClick={() => onSelectProject('grid')}>
+        <span className="icon">▦</span> <h3>Grid Drawer</h3>
+      </button>
     </div>
   )
 }
