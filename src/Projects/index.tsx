@@ -1,58 +1,69 @@
-import React, { useState } from 'react'
-import './Projects.css'
-import ColorWheel from './ColorWheel'
-import Pong from './Pong'
-import GridDrawer from './GridDrawer'
+import { useState } from 'react';
+
+import './Projects.css';
+
+import ColorWheel from './ColorWheel';
+import GridDrawer from './GridDrawer';
+import Pong from './Pong';
+
+// Define a type for the project keys
+type ProjectName = 'colorWheel' | 'pong' | 'grid';
+
+// Optional: Create an array for mapping through the projects
+const PROJECTS: { name: ProjectName; label: string; icon: string }[] = [
+    { name: 'colorWheel', label: 'Color Wheel', icon: '🎨' },
+    { name: 'pong', label: 'Locking Pong', icon: '║' },
+    { name: 'grid', label: 'Grid Drawer', icon: '▦' },
+];
 
 function Projects() {
-  const [selectedProject, setSelectedProject] = useState<string | null>(null)
+    const [selectedProject, setSelectedProject] = useState<ProjectName>('colorWheel');
 
-  const renderProject = () => {
-    switch (selectedProject) {
-      case 'colorWheel':
-        return <ColorWheel />
-      case 'pong':
-        return <Pong />
-      case 'grid':
-        return <GridDrawer />
-      default:
-        return <ColorWheel />
-    }
-  }
+    const renderProject = () => {
+        switch (selectedProject) {
+            case 'colorWheel':
+                return <ColorWheel />;
+            case 'pong':
+                return <Pong />;
+            case 'grid':
+                return <GridDrawer />;
+            default:
+                throw Error(`Invalid project name: ${selectedProject}`);
+        }
+    };
 
-  return (
-    <div className="projects-container">
-      <Sidebar onSelectProject={setSelectedProject} />
-      <div className="projects-content">{renderProject()}</div>
-    </div>
-  )
+    return (
+        <div className="projects-container">
+            <Sidebar selectedProject={selectedProject} onSelectProject={setSelectedProject} />
+            <div className="projects-content">{renderProject()}</div>
+        </div>
+    );
 }
 
-function Sidebar({
-  onSelectProject,
-}: {
-  onSelectProject: (project: string) => void
-}) {
-  return (
-    <div className="sidebar">
-      <a href="/" className="sidebar-link home-link">
-        <span className="icon">🏠</span> <h2>Home</h2>
-      </a>
-      <button
-        className="sidebar-link"
-        onClick={() => onSelectProject('colorWheel')}
-      >
-        <span className="icon">🎨</span> <h3>Color Wheel</h3>
-      </button>
-      <button className="sidebar-link" onClick={() => onSelectProject('pong')}>
-        <span className="icon">║</span>
-        <h3>Locking Pong</h3>
-      </button>
-      <button className="sidebar-link" onClick={() => onSelectProject('grid')}>
-        <span className="icon">▦</span> <h3>Grid Drawer</h3>
-      </button>
-    </div>
-  )
+interface SidebarProps {
+    selectedProject: ProjectName | null;
+    onSelectProject: (project: ProjectName) => void;
 }
 
-export default Projects
+function Sidebar({ selectedProject, onSelectProject }: SidebarProps) {
+    return (
+        <div className="sidebar">
+            <a href="/" className="sidebar-link home-link">
+                <div className="icon">🏠</div> <h2>Home</h2>
+            </a>
+
+            {PROJECTS.map(project => (
+                <button
+                    key={project.name}
+                    className={`sidebar-link ${selectedProject === project.name ? 'active' : ''}`}
+                    onClick={() => onSelectProject(project.name)}
+                >
+                    <div className="icon">{project.icon}</div>
+                    <h3>{project.label}</h3>
+                </button>
+            ))}
+        </div>
+    );
+}
+
+export default Projects;
