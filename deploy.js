@@ -35,14 +35,42 @@ try {
     console.log(`☁️  Deploying to S3 bucket: ${S3_BUCKET}...`);
     execSync(`aws s3 sync build/ ${S3_BUCKET} --delete`, { stdio: 'inherit' });
 
-    // 5. Invalidate CloudFront Distribution
-    console.log(`🌀 Invalidating CloudFront distribution: ${CLOUDFRONT_DISTRIBUTION_ID}...`);
-    execSync(
+    // 5. Create CloudFront Invalidation
+    console.log(
+        `🌀 Creating CloudFront invalidation for distribution: ${CLOUDFRONT_DISTRIBUTION_ID}...`,
+    );
+    const invalidationOutput = execSync(
         `aws cloudfront create-invalidation --distribution-id ${CLOUDFRONT_DISTRIBUTION_ID} --paths "/*"`,
-        { stdio: 'inherit' },
+        { encoding: 'utf-8' },
     );
 
-    console.log(`🎉 Deployment and invalidation successful!`);
+    const invalidationIdMatch = invalidationOutput.match(/"Id":\s*"([^"]+)"/);
+    const invalidationId = invalidationIdMatch ? invalidationIdMatch[1] : null;
+
+    if (!invalidationId) {
+        throw new Error('❌ Failed to extract invalidation ID from the response.');
+    }
+
+    console.log(`🕒 Waiting for invalidation ${invalidationId} to complete...`);
+
+    // 6. Poll Invalidation Status
+    let invalidationStatus = 'InProgress';
+    while (status === 'InProgress') {
+        const result = execSync(
+            `aws cloudfront get-invalidation --distribution-id ${CLOUDFRONT_DISTRIBUTION_ID} --id ${invalidationId}`,
+            { encoding: 'utf-8' },
+        );
+        invalidationStatus = JSON.parse(result).Invalidation.Status;
+        console.log(`🔄 Invalidation status: ${invalidationStatus}`);
+
+        if (status === 'InProgress') {
+            console.log('⏳ Still in progress... waiting 10 seconds.');
+            execSync('sleep 2');
+        }
+    }
+
+    console.log(`✅ Invalidation ${invalidationId} completed successfully!`);
+    console.log(`🎉 Deployment and invalidation process finished!`);
 } catch (error) {
     console.error('\n🚨 Deployment failed: ', error.message);
     process.exit(1);
