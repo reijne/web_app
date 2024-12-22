@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import React, { startTransition, useState } from 'react';
 
 import './Projects.css';
 
-import ColorWheel from './ColorWheel';
-import GridDrawer from './GridDrawer';
-import Pong from './Pong';
+const ColorWheel = React.lazy(() => import('./ColorWheel'));
+const GridDrawer = React.lazy(() => import('./GridDrawer'));
+const Pong = React.lazy(() => import('./Pong'));
 
 // Define a type for the project keys
 type ProjectName = 'colorWheel' | 'pong' | 'grid';
@@ -46,6 +46,12 @@ interface SidebarProps {
 }
 
 function Sidebar({ selectedProject, onSelectProject }: SidebarProps) {
+    const handleProjectSelect = (project: ProjectName) => {
+        startTransition(() => {
+            onSelectProject(project);
+        });
+    };
+
     return (
         <div className="sidebar">
             <a href="/" className="sidebar-link home-link">
@@ -56,7 +62,7 @@ function Sidebar({ selectedProject, onSelectProject }: SidebarProps) {
                 <button
                     key={project.name}
                     className={`sidebar-link ${selectedProject === project.name ? 'active' : ''}`}
-                    onClick={() => onSelectProject(project.name)}
+                    onClick={() => handleProjectSelect(project.name)}
                 >
                     <div className="icon">{project.icon}</div>
                     <h3>{project.label}</h3>
