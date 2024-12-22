@@ -22,3 +22,6 @@
         animation: spin 2s linear infinite;
     }
 }
+
+/* TODO: When adding more to this file, check if its not a better idea to
+         start splitting up the css into multiple files. */
