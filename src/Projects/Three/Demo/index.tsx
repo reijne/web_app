@@ -39,7 +39,7 @@ const DemoScene: React.FC = () => {
         };
     }, []);
 
-    return <div ref={mountRef}></div>;
+    return <div className="demo-scene" ref={mountRef}></div>;
 };
 
 export default DemoScene;

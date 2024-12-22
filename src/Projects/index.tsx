@@ -7,14 +7,14 @@ import './Projects.css';
 const ColorWheel = React.lazy(() => import('./ColorWheel'));
 const GridDrawer = React.lazy(() => import('./GridDrawer'));
 const Pong = React.lazy(() => import('./Pong'));
-// const ThreeDemo = React.lazy(() => import('./Three/Demo'));
+const ThreeDemo = React.lazy(() => import('./Three/Demo'));
 
 /** Defines all the projects we have available, and points to the lazy loaded component for it. */
 const PROJECT_MAPPING = {
     colorWheel: <ColorWheel />,
     pong: <Pong />,
     grid: <GridDrawer />,
-    // demo: <ThreeDemo />,
+    demo: <ThreeDemo />,
 };
 
 type ProjectName = keyof typeof PROJECT_MAPPING;
@@ -42,7 +42,7 @@ const PURE_PROJECTS: PureProject[] = [
 ];
 
 const THREE_PROJECTS: ThreeProject[] = [
-    // { type: 'three', name: 'demo', label: 'Three Demo', icon: '③' },
+    { type: 'three', name: 'demo', label: 'Three Demo', icon: '③' },
 ];
 
 function Projects() {
