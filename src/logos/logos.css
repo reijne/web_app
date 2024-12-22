@@ -1,22 +1,32 @@
-.Face-logo {
-  flex: 0 0 auto;
-  margin-right: 20px;
-  max-width: 40%;
-  animation: Home-logo-grow-shrink infinite 3s ease-in-out;
+.face-logo-wrapper {
+    display: flex;
+    margin-right: 5rem;
+    max-width: 30%;
+    overflow: hidden;
+
+    img {
+        width: 33%;
+        height: auto;
+        /* flex-shrink: 0; Prevent shrinking */
+    }
+
+    .unicode {
+        font-size: 10rem;
+    }
 }
 
 .social-link {
-  margin: 0 2rem;
-  color: var(--secondary-color-dark);
+    margin: 0 2rem;
+    color: var(--secondary-color-dark);
 }
 
 .social-logo {
-  width: 2.5rem;
-  height: 2.5rem;
-  margin-right: 0.25rem;
-  opacity: 0.7;
+    width: 2.5rem;
+    height: 2.5rem;
+    margin-right: 0.25rem;
+    opacity: 0.7;
 }
 
 .social-logo:hover {
-  opacity: 1;
+    opacity: 1;
 }
