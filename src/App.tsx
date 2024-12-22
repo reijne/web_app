@@ -1,5 +1,6 @@
-import React, { startTransition, useState } from 'react';
+import React, { startTransition, Suspense, useState } from 'react';
 
+import { Loading } from './components/Loading';
 import Footer from './Footer';
 import Home from './Home';
 import { Page } from './types';
@@ -18,7 +19,11 @@ function App() {
     const renderPage = () => {
         switch (currentPage) {
             case 'projects':
-                return <Projects />;
+                return (
+                    <Suspense fallback={<Loading />}>
+                        <Projects />
+                    </Suspense>
+                );
             case 'home':
                 return <Home setCurrentPage={handlePageSelect} />;
             default:

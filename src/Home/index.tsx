@@ -1,10 +1,9 @@
 import './Home.css';
 
 import { FaceLogo } from '../logos';
+import { Page } from '../types';
 
 import './Home.css';
-
-import { Page } from '../types';
 
 function Home({ setCurrentPage }: { setCurrentPage: (page: Page) => void }) {
     return (
@@ -45,7 +44,7 @@ function ProjectsButton({ setCurrentPage }: { setCurrentPage: (page: Page) => vo
     return (
         <div className="Home-projects-button-container">
             <button className="Home-projects-button" onClick={() => setCurrentPage('projects')}>
-                <code>View My Projects</code>
+                <code>View Projects</code>
             </button>
         </div>
     );
