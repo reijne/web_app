@@ -21,7 +21,7 @@ function App() {
             case 'projects':
                 return (
                     <Suspense fallback={<Loading />}>
-                        <Projects />
+                        <Projects setCurrentPage={handlePageSelect} />
                     </Suspense>
                 );
             case 'home':

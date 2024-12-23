@@ -1,6 +1,7 @@
 import React, { startTransition, Suspense, useState } from 'react';
 
-import { Loading } from '../components/Loading';
+import { Loading } from '../components';
+import { Page } from '../types';
 
 import './Projects.css';
 
@@ -45,12 +46,16 @@ const THREE_PROJECTS: ThreeProject[] = [
     { type: 'three', name: 'demo', label: 'Three Demo', icon: '③' },
 ];
 
-function Projects() {
+function Projects({ setCurrentPage }: { setCurrentPage: (page: Page) => void }) {
     const [selectedProject, setSelectedProject] = useState<ProjectName>('colorWheel');
 
     return (
         <div className="projects-container">
-            <Sidebar selectedProject={selectedProject} onSelectProject={setSelectedProject} />
+            <Sidebar
+                selectedProject={selectedProject}
+                onSelectProject={setSelectedProject}
+                setCurrentPage={setCurrentPage}
+            />
             <Suspense fallback={<Loading />} key={selectedProject}>
                 <div className="projects-content">{PROJECT_MAPPING[selectedProject]}</div>
             </Suspense>
@@ -61,9 +66,10 @@ function Projects() {
 interface SidebarProps {
     selectedProject: ProjectName | null;
     onSelectProject: (project: ProjectName) => void;
+    setCurrentPage: (page: Page) => void;
 }
 
-function Sidebar({ selectedProject, onSelectProject }: SidebarProps) {
+function Sidebar({ selectedProject, onSelectProject, setCurrentPage }: SidebarProps) {
     const handleProjectSelect = (project: ProjectName) => {
         startTransition(() => {
             onSelectProject(project);
@@ -83,9 +89,9 @@ function Sidebar({ selectedProject, onSelectProject }: SidebarProps) {
 
     return (
         <div className="sidebar">
-            <a href="/" className="sidebar-link home-link">
-                <div className="icon">🏠</div> <h2>Home</h2>
-            </a>
+            <div onClick={() => setCurrentPage('home')} className="sidebar-link home-link">
+                <div className="icon">⌂</div> <h2>Home</h2>
+            </div>
 
             {PURE_PROJECTS.map(project => renderSelectProjectButton(project))}
             {THREE_PROJECTS.map(project => renderSelectProjectButton(project))}
