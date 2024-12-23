@@ -12,12 +12,7 @@ interface Creation {
         width: number;
         height: number;
     };
-}
-
-function getRandomGreyColor() {
-    const grey = Math.floor(Math.random() * 120) + 50; // Shades of grey
-    const alpha = Math.random() * 0.7 + 0.3;
-    return `rgba(${grey}, ${grey}, ${grey}, ${alpha})`;
+    buildingCount: number;
 }
 
 interface Shape {
@@ -28,10 +23,19 @@ interface Shape {
     color: string;
 }
 
+function getBuildingColor(height: number, maxHeight: number) {
+    const ratio = height / maxHeight; // 0 (small) -> 1 (tall)
+    const grey = Math.floor(ratio * 185 + 15); // Range from 30 (dark) to 200 (light)
+    const alpha = 0.8; // Slight transparency for layering effect
+    return `rgba(${grey}, ${grey}, ${grey}, ${alpha})`;
+}
+
 // Create a new building
 function createBuilding(opts: Creation): Shape {
-    const baseHeight = Math.random() * opts.canvas.height;
-    const baseWidth = Math.random() * 80 + 30;
+    const maxHeight = opts.canvas.height; // Full canvas height
+    const baseHeight = Math.random() * maxHeight * 0.97; // Random height
+    const minWidth = opts.canvas.width / opts.buildingCount;
+    const baseWidth = Math.random() * minWidth + minWidth;
     const xOffset = Math.random() * opts.canvas.width;
 
     return {
@@ -42,7 +46,7 @@ function createBuilding(opts: Creation): Shape {
         },
         width: baseWidth,
         height: baseHeight,
-        color: getRandomGreyColor(),
+        color: getBuildingColor(baseHeight, maxHeight), // Color based on height
     };
 }
 
@@ -65,9 +69,10 @@ const Background: React.FC = () => {
 
         const regenerateBuildings = (canvas: HTMLCanvasElement) => {
             shapesRef.current = [];
-            const buildingCount = Math.floor(canvas.width / 20);
+            const buildingCount = Math.floor(canvas.width / 10);
+
             for (let i = 0; i < buildingCount; i++) {
-                shapesRef.current.push(createBuilding({ canvas }));
+                shapesRef.current.push(createBuilding({ canvas, buildingCount }));
             }
         };
 
