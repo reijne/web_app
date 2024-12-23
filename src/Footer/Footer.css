@@ -3,12 +3,14 @@
     justify-content: space-around;
     align-items: center;
     border-top: 1px solid #e0e0e0;
+    background-color: white;
+    padding-top: 0.25rem;
 
-    .hash {
+    & .hash {
         color: var(--gray);
         position: absolute;
         background-color: white;
-        right: 1rem;
-        bottom: 0.5;
+        right: 0;
+        bottom: 0.5rem;
     }
 }

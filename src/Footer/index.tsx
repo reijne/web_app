@@ -2,7 +2,7 @@ import { EmailLogo, GithubLogo, LinkedInLogo } from '../logos';
 
 import './Footer.css';
 
-function Footer() {
+export default function Footer() {
     const renderCommitHash = () => {
         const commitHash = process.env.REACT_APP_GIT_HASH;
         if (commitHash == null) {
@@ -31,5 +31,3 @@ function Footer() {
         </footer>
     );
 }
-
-export default Footer;
