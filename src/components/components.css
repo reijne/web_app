@@ -7,21 +7,85 @@
     }
 }
 
-/* Loading.tsx */
+@keyframes wiggle {
+    0% {
+        transform: translateX(0);
+    }
+    25% {
+        transform: translateX(-5px) scale(1.1, 1);
+    }
+    50% {
+        transform: translateX(5px);
+    }
+    75% {
+        transform: translateX(-3px) scale(1.1, 1);
+    }
+    100% {
+        transform: translateX(0);
+    }
+}
+
+/* Loading */
 .loading {
     flex-grow: 1;
     display: flex;
     justify-content: center;
     align-items: center;
-
     font-size: larger;
     text-align: center;
 
-    .icon {
+    & .icon {
         font-size: inherit;
         animation: spin 2s linear infinite;
     }
 }
 
-/* TODO: When adding more to this file, check if its not a better idea to
-         start splitting up the css into multiple files. */
+/* Derp Smiley */
+.derp-smiley {
+    position: absolute;
+    bottom: 3rem;
+    left: 0;
+    transition: transform 0.6s cubic-bezier(0.68, -0.55, 0.27, 1.55), left 0.6s ease,
+        right 0.6s ease;
+    background-color: pink;
+    border-radius: 2rem;
+    border: 1px solid black;
+    color: black;
+    cursor: default;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.derp-smiley.squish {
+    transform: scale(0.8, 0.8);
+}
+
+.derp-smiley.flip {
+    left: auto;
+    right: 0;
+}
+
+.derp-smiley.wiggle {
+    animation: wiggle 0.6s ease infinite;
+}
+
+/* Derp Smiley */
+/* .derp-smiley {
+    position: absolute;
+    bottom: 3rem;
+    left: 0;
+
+    transition: transform 0.3s ease, left 0.3s ease, right 0.3s ease;
+
+    background-color: white;
+    border-radius: 2rem;
+    border: 1px solid black;
+    color: black;
+    cursor: default;
+}
+
+.derp-smiley.flip {
+    left: auto;
+    right: 0;
+} */

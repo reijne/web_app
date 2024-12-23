@@ -1,6 +1,6 @@
 import React, { startTransition, Suspense, useState } from 'react';
 
-import { Loading } from './components/Loading';
+import { DerpSmiley, Loading } from './components';
 import Footer from './Footer';
 import Home from './Home';
 import { Page } from './types';
@@ -35,6 +35,7 @@ function App() {
         <div className="App">
             {renderPage()}
             <Footer />
+            <DerpSmiley />
         </div>
     );
 }
