@@ -12,35 +12,20 @@ interface Particle {
 
 const PARTICLES = {
     count: 50,
-    speed: 0.1,
+    speed: 0.02,
     size: {
-        min: 2,
-        variance: 10,
+        min: 1,
+        variance: 2,
     },
 };
 
 // Create a particle
-function createParticle(index: number, canvas: HTMLCanvasElement): Particle {
-    let x = 0;
-    let y = 0;
-    let vx = Math.random() * PARTICLES.speed;
-    let vy = Math.random() * PARTICLES.speed;
-    if (index > PARTICLES.count / 2) {
-        x = canvas.width;
-        y = canvas.height;
-        vx *= -1;
-        vy *= -1;
-    }
-
+function createParticle(canvas: HTMLCanvasElement): Particle {
     return {
-        x,
-        y,
-        // x: Math.random() * canvas.width,
-        // y: Math.random() * canvas.height,
-        // vx: (Math.random() - 0.5) * PARTICLES.speed,
-        // vy: (Math.random() - 0.5) * PARTICLES.speed,
-        vx,
-        vy,
+        x: canvas.width / 2,
+        y: canvas.height / 2,
+        vx: (Math.random() - 0.5) * PARTICLES.speed,
+        vy: (Math.random() - 0.5) * PARTICLES.speed,
         radius: Math.random() * PARTICLES.size.variance + PARTICLES.size.min,
     };
 }
@@ -64,9 +49,17 @@ const Background: React.FC = () => {
 
         // Create particles
         const createParticles = () => {
-            particlesRef.current = Array.from({ length: PARTICLES.count }, (_, index) =>
-                createParticle(index, canvas),
-            );
+            const particles = Array.from({ length: PARTICLES.count }, () => createParticle(canvas));
+            // Create one particle that is bigger.
+            particles.push({
+                x: canvas.width / 2,
+                y: canvas.height / 2,
+                vx: (Math.random() - 0.5) * PARTICLES.speed,
+                vy: (Math.random() - 0.5) * PARTICLES.speed,
+                radius: 2 * (PARTICLES.size.min + PARTICLES.size.variance),
+            });
+
+            particlesRef.current = particles;
         };
         createParticles();
 
@@ -77,9 +70,9 @@ const Background: React.FC = () => {
             ctx.globalCompositeOperation = 'lighter';
             particlesRef.current.forEach(particle => {
                 ctx.beginPath();
-                ctx.rect(particle.x, particle.y, particle.radius, particle.radius);
-                // ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                // ctx.rect(particle.x, particle.y, particle.radius, particle.radius);
+                ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(0, 0, 0, 1)';
                 ctx.fill();
                 ctx.closePath();
             });
@@ -92,11 +85,6 @@ const Background: React.FC = () => {
                 if (particle.x <= 0 || particle.x >= canvas.width) particle.vx *= -1;
                 if (particle.y <= 0 || particle.y >= canvas.height) particle.vy *= -1;
             });
-
-            // Motion trail effect
-            ctx.globalCompositeOperation = 'source-over';
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             requestAnimationFrame(drawParticles);
         };
