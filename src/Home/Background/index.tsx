@@ -10,23 +10,38 @@ interface Particle {
     radius: number;
 }
 
-const SPEED = 0.002;
-const PARTICALS = {
-    count: 30,
+const PARTICLES = {
+    count: 50,
+    speed: 0.1,
     size: {
         min: 2,
-        variance: 80,
+        variance: 10,
     },
 };
 
 // Create a particle
-function createParticle(canvas: HTMLCanvasElement): Particle {
+function createParticle(index: number, canvas: HTMLCanvasElement): Particle {
+    let x = 0;
+    let y = 0;
+    let vx = Math.random() * PARTICLES.speed;
+    let vy = Math.random() * PARTICLES.speed;
+    if (index > PARTICLES.count / 2) {
+        x = canvas.width;
+        y = canvas.height;
+        vx *= -1;
+        vy *= -1;
+    }
+
     return {
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        vx: (Math.random() - 0.5) * SPEED,
-        vy: (Math.random() - 0.5) * SPEED,
-        radius: Math.random() * PARTICALS.size.variance + PARTICALS.size.min,
+        x,
+        y,
+        // x: Math.random() * canvas.width,
+        // y: Math.random() * canvas.height,
+        // vx: (Math.random() - 0.5) * PARTICLES.speed,
+        // vy: (Math.random() - 0.5) * PARTICLES.speed,
+        vx,
+        vy,
+        radius: Math.random() * PARTICLES.size.variance + PARTICLES.size.min,
     };
 }
 
@@ -49,8 +64,8 @@ const Background: React.FC = () => {
 
         // Create particles
         const createParticles = () => {
-            particlesRef.current = Array.from({ length: PARTICALS.count }, () =>
-                createParticle(canvas),
+            particlesRef.current = Array.from({ length: PARTICLES.count }, (_, index) =>
+                createParticle(index, canvas),
             );
         };
         createParticles();
