@@ -37,7 +37,7 @@ interface ThreeProject extends _BaseProject {
 type Project = PureProject | ThreeProject;
 
 const PURE_PROJECTS: PureProject[] = [
-    { type: 'pure', name: 'colorWheel', label: 'Color Wheel', icon: '🎨' },
+    { type: 'pure', name: 'colorWheel', label: 'Color Wheel', icon: '◉' },
     { type: 'pure', name: 'pong', label: 'Locking Pong', icon: '║' },
     { type: 'pure', name: 'grid', label: 'Grid Drawer', icon: '▦' },
 ];
