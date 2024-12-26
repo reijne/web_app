@@ -9,6 +9,7 @@ import './Projects.css';
 const ColorWheel = React.lazy(() => import('./ColorWheel'));
 const GridDrawer = React.lazy(() => import('./GridDrawer'));
 const Pong = React.lazy(() => import('./Pong'));
+const Slime = React.lazy(() => import('./Slime'));
 const ThreeDemo = React.lazy(() => import('./Three/Demo'));
 
 /** Defines all the projects we have available, and points to the lazy loaded component for it. */
@@ -16,6 +17,7 @@ const PROJECT_MAPPING = {
     colorWheel: <ColorWheel />,
     pong: <Pong />,
     grid: <GridDrawer />,
+    slime: <Slime />,
     demo: <ThreeDemo />,
 };
 
