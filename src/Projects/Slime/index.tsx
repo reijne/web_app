@@ -26,9 +26,9 @@ interface SlimeParticle {
 
 // Default configuration
 const DEFAULT_SLIME_CONFIG: SlimeConfig = {
-    particleCount: { value: 500, default: 500, min: 100, max: 2000 },
+    particleCount: { value: 500, default: 500, min: 100, max: 5000 },
     trailDecay: { value: 0.98, default: 0.98, min: 0.9, max: 1 },
-    speed: { value: 1.5, default: 1.5, min: 0.1, max: 3 },
+    speed: { value: 1.5, default: 1.5, min: 0.5, max: 3 },
     sensorAngle: { value: Math.PI / 4, default: Math.PI / 4, min: Math.PI / 8, max: Math.PI / 2 },
     sensorDistance: { value: 20, default: 20, min: 5, max: 40 },
     turnSpeed: { value: 0.2, default: 0.2, min: 0.05, max: 0.4 },
@@ -116,7 +116,7 @@ const SlimeScene: React.FC = () => {
             ctx.putImageData(imageData, 0, 0);
 
             // Draw slime particles
-            ctx.fillStyle = 'rgba(255, 255, 255, 1)';
+            ctx.fillStyle = 'rgb(134, 255, 188)';
             particlesRef.current.forEach(p => {
                 if (isRunning) {
                     p.x += Math.cos(p.angle) * slime.speed.value;
@@ -130,6 +130,7 @@ const SlimeScene: React.FC = () => {
                 // Mark the trail at the particle's position
                 trailBuffer[Math.floor(p.y)][Math.floor(p.x)] = 1;
 
+                // ctx.fillStyle = `hsl(${p.angle * (180 / Math.PI)}, 100%, 60%)`; // Hue based on angle
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, 1, 0, Math.PI * 2);
                 ctx.fill();
@@ -216,6 +217,7 @@ const SlimeScene: React.FC = () => {
 
             <div className="controls">
                 <button onClick={toggleSimulation}>{isRunning ? '⏸' : '▶'}</button>
+                <button onClick={() => setShowConfig(!showConfig)}>⚙</button>
                 {showConfig && (
                     <div className="config-panel">
                         {Object.entries(DEFAULT_SLIME_CONFIG).map(([key, { min, max, value }]) => (
@@ -239,7 +241,6 @@ const SlimeScene: React.FC = () => {
                         ))}
                     </div>
                 )}
-                <button onClick={() => setShowConfig(!showConfig)}>⚙</button>
             </div>
         </div>
     );
