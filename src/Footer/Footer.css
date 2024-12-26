@@ -10,7 +10,7 @@
         color: var(--gray);
         position: absolute;
         background-color: white;
-        right: 0;
+        right: 0.5rem;
         bottom: 0.5rem;
     }
 }
