@@ -26,7 +26,7 @@ interface SlimeParticle {
 
 // Default configuration
 const DEFAULT_SLIME_CONFIG: SlimeConfig = {
-    particleCount: { value: 500, default: 500, min: 100, max: 5000 },
+    particleCount: { value: 500, default: 500, min: 100, max: 20000 },
     trailDecay: { value: 0.98, default: 0.98, min: 0.9, max: 1 },
     speed: { value: 1.5, default: 1.5, min: 0.5, max: 3 },
     sensorAngle: { value: Math.PI / 4, default: Math.PI / 4, min: Math.PI / 8, max: Math.PI / 2 },
@@ -50,7 +50,7 @@ const SlimeScene: React.FC = () => {
 
     const [slime, setSlime] = useState(DEFAULT_SLIME_CONFIG);
     const [isRunning, setIsRunning] = useState(true);
-    const [showConfig, setShowConfig] = useState(false);
+    const [showConfig, setShowConfig] = useState(true);
 
     const initTrailBuffer = (width: number, height: number) => {
         trailBufferRef.current = Array.from({ length: height + 1 }, () => Array(width + 1).fill(0));
@@ -216,8 +216,12 @@ const SlimeScene: React.FC = () => {
             ></canvas>
 
             <div className="controls">
-                <button onClick={toggleSimulation}>{isRunning ? '⏸' : '▶'}</button>
-                <button onClick={() => setShowConfig(!showConfig)}>⚙</button>
+                <button className="play-pause" onClick={toggleSimulation}>
+                    {isRunning ? '⏸' : '▶'}
+                </button>
+                <button className="config" onClick={() => setShowConfig(!showConfig)}>
+                    ⚙
+                </button>
                 {showConfig && (
                     <div className="config-panel">
                         {Object.entries(DEFAULT_SLIME_CONFIG).map(([key, { min, max, value }]) => (

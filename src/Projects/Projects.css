@@ -12,6 +12,7 @@
     }
 
     & .home-link {
+        font-weight: bolder;
         border-bottom: 2.5px solid var(--gray) !important;
     }
 
@@ -46,6 +47,7 @@
     & .projects-content {
         flex: 1;
         display: flex;
+        justify-content: center;
         padding: 20px;
         overflow-y: hidden;
     }
