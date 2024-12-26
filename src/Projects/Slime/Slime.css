@@ -1,5 +1,31 @@
-.slime-scene {
-    width: 100%;
-    height: 100%;
-    filter: blur(1px);
+.slime-container {
+    display: flex;
+    flex-direction: column;
+
+    & .controls {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        display: flex;
+        flex-direction: column;
+    }
+
+    & .slime-scene {
+        width: 100%;
+        height: 100%;
+        filter: blur(1px);
+        &.show-config {
+            width: 100%;
+            height: 70%;
+        }
+    }
+
+    & .config-panel {
+        background: white;
+        width: 30%;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        align-items: end;
+    }
 }
