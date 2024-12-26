@@ -1,6 +1,8 @@
 .projects-container {
     display: flex;
     height: 100%;
+    width: 100%;
+    overflow: hidden;
 
     & .sidebar {
         width: 20%;
@@ -43,7 +45,8 @@
 
     & .projects-content {
         flex: 1;
-        margin: 20px;
-        overflow-y: auto;
+        display: flex;
+        padding: 20px;
+        overflow-y: hidden;
     }
 }
