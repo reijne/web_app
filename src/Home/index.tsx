@@ -2,6 +2,7 @@ import './Home.css';
 
 import React, { Suspense, useEffect, useState } from 'react';
 
+import { DerpSmiley } from '../components';
 import { FaceLogo } from '../logos';
 import { Page } from '../types';
 
@@ -10,7 +11,7 @@ import './Home.css';
 // Lazy load the background
 const Background = React.lazy(() => import('./Background'));
 
-function Home({ setCurrentPage }: { setCurrentPage: (page: Page) => void }) {
+function Home({ handlePageSelect }: { handlePageSelect: (page: Page) => void }) {
     const [loadBackground, setLoadBackground] = useState(false);
 
     useEffect(() => {
@@ -21,7 +22,7 @@ function Home({ setCurrentPage }: { setCurrentPage: (page: Page) => void }) {
         <div className="home">
             <div className="main-content">
                 <Header />
-                <ProjectsButton setCurrentPage={setCurrentPage} />
+                <ProjectsButton handlePageSelect={handlePageSelect} />
             </div>
             {/* Background only loads AFTER the timeout */}
             {loadBackground && (
@@ -29,6 +30,7 @@ function Home({ setCurrentPage }: { setCurrentPage: (page: Page) => void }) {
                     <Background />
                 </Suspense>
             )}
+            <DerpSmiley />
         </div>
     );
 }
@@ -57,10 +59,10 @@ function HeaderText() {
     );
 }
 
-function ProjectsButton({ setCurrentPage }: { setCurrentPage: (page: Page) => void }) {
+function ProjectsButton({ handlePageSelect }: { handlePageSelect: (page: Page) => void }) {
     return (
         <div className="projects-button-container">
-            <button className="projects-button" onClick={() => setCurrentPage('projects')}>
+            <button className="projects-button" onClick={() => handlePageSelect('projects')}>
                 <code>View Projects</code>
             </button>
         </div>

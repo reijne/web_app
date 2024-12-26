@@ -2,6 +2,7 @@ import React, { startTransition, Suspense, useState } from 'react';
 
 import { Loading } from '../components';
 import { Page } from '../types';
+import { SessionStorage } from '../utils';
 
 import './Projects.css';
 
@@ -40,21 +41,33 @@ const PURE_PROJECTS: PureProject[] = [
     { type: 'pure', name: 'colorWheel', label: 'Color Wheel', icon: '◉' },
     { type: 'pure', name: 'pong', label: 'Locking Pong', icon: '║' },
     { type: 'pure', name: 'grid', label: 'Grid Drawer', icon: '▦' },
+    { type: 'pure', name: 'slime', label: 'Slime Simulation', icon: '࿚' },
 ];
 
 const THREE_PROJECTS: ThreeProject[] = [
     { type: 'three', name: 'demo', label: 'Three Demo', icon: '③' },
 ];
 
-function Projects({ setCurrentPage }: { setCurrentPage: (page: Page) => void }) {
-    const [selectedProject, setSelectedProject] = useState<ProjectName>('colorWheel');
+function Projects({ handlePageSelect }: { handlePageSelect: (page: Page) => void }) {
+    const savedProject = SessionStorage.getItem('project');
+    const savedSelected = Object.keys(PROJECT_MAPPING).includes(savedProject as ProjectName)
+        ? (savedProject as ProjectName)
+        : 'colorWheel';
+    const [selectedProject, setSelectedProject] = useState<ProjectName>(savedSelected);
+
+    const handleProjectSelect = (project: ProjectName) => {
+        startTransition(() => {
+            setSelectedProject(project);
+            SessionStorage.setItem('project', project);
+        });
+    };
 
     return (
         <div className="projects-container">
             <Sidebar
                 selectedProject={selectedProject}
-                onSelectProject={setSelectedProject}
-                setCurrentPage={setCurrentPage}
+                handleProjectSelect={handleProjectSelect}
+                handlePageSelect={handlePageSelect}
             />
             <Suspense fallback={<Loading />} key={selectedProject}>
                 <div className="projects-content">{PROJECT_MAPPING[selectedProject]}</div>
@@ -65,17 +78,11 @@ function Projects({ setCurrentPage }: { setCurrentPage: (page: Page) => void }) 
 
 interface SidebarProps {
     selectedProject: ProjectName | null;
-    onSelectProject: (project: ProjectName) => void;
-    setCurrentPage: (page: Page) => void;
+    handleProjectSelect: (project: ProjectName) => void;
+    handlePageSelect: (page: Page) => void;
 }
 
-function Sidebar({ selectedProject, onSelectProject, setCurrentPage }: SidebarProps) {
-    const handleProjectSelect = (project: ProjectName) => {
-        startTransition(() => {
-            onSelectProject(project);
-        });
-    };
-
+function Sidebar({ selectedProject, handleProjectSelect, handlePageSelect }: SidebarProps) {
     const renderSelectProjectButton = (project: Project) => (
         <button
             key={project.name}
@@ -89,7 +96,7 @@ function Sidebar({ selectedProject, onSelectProject, setCurrentPage }: SidebarPr
 
     return (
         <div className="sidebar">
-            <div onClick={() => setCurrentPage('home')} className="sidebar-link home-link">
+            <div onClick={() => handlePageSelect('home')} className="sidebar-link home-link">
                 <div className="icon">⌂</div> <h2>Home</h2>
             </div>
 

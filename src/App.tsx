@@ -1,18 +1,23 @@
 import React, { startTransition, Suspense, useState } from 'react';
 
-import { DerpSmiley, Loading } from './components';
+import { Loading } from './components';
 import Footer from './Footer';
 import Home from './Home';
 import { Page } from './types';
+import { SessionStorage } from './utils';
 
 const Projects = React.lazy(() => import('./Projects'));
 
 function App() {
-    const [currentPage, setCurrentPage] = useState<Page>('home');
+    const [currentPage, setCurrentPage] = useState<Page>(
+        // Can use cast here, because we will catch any invalid pages in switch.
+        (SessionStorage.getItem('page') as Page) || 'home',
+    );
 
     const handlePageSelect = (page: Page) => {
         startTransition(() => {
             setCurrentPage(page);
+            SessionStorage.setItem('page', page);
         });
     };
 
@@ -21,13 +26,13 @@ function App() {
             case 'projects':
                 return (
                     <Suspense fallback={<Loading />}>
-                        <Projects setCurrentPage={handlePageSelect} />
+                        <Projects handlePageSelect={handlePageSelect} />
                     </Suspense>
                 );
             case 'home':
-                return <Home setCurrentPage={handlePageSelect} />;
+                return <Home handlePageSelect={handlePageSelect} />;
             default:
-                throw Error(`Invalid page: ${currentPage}`);
+                return <Home handlePageSelect={handlePageSelect} />;
         }
     };
 
@@ -35,7 +40,6 @@ function App() {
         <div className="App">
             {renderPage()}
             <Footer />
-            <DerpSmiley />
         </div>
     );
 }
