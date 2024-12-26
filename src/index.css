@@ -40,13 +40,12 @@ body {
     padding-right: 1rem;
 }
 
-button.primary {
-    background-color: var(--primary-color);
+button.primary,
+button.secondary {
     color: white;
     border: none;
     border-radius: 0.25rem;
     padding: 0.5rem 1rem;
-    border-radius: 0.25rem;
     cursor: pointer;
 
     &:hover {
@@ -57,19 +56,10 @@ button.primary {
     }
 }
 
+button.primary {
+    background-color: var(--primary-color);
+}
+
 button.secondary {
     background-color: var(--secondary-color);
-    color: white;
-    border: none;
-    border-radius: 0.25rem;
-    padding: 0.5rem 1rem;
-    border-radius: 0.25rem;
-    cursor: pointer;
-
-    &:hover {
-        filter: brightness(0.9);
-    }
-    &:active {
-        filter: brightness(0.8);
-    }
 }
