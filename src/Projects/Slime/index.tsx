@@ -63,7 +63,6 @@ const SlimeScene: React.FC = () => {
 
         const resizeCanvas = () => {
             const { width, height } = canvas.getBoundingClientRect();
-            console.log('Canvas resized:', width, height);
             canvas.width = width;
             canvas.height = height;
             ctx.fillStyle = 'rgba(0, 0, 0, 1)';
