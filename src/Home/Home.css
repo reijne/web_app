@@ -61,4 +61,9 @@
         margin-left: 1rem;
         border-left: 1px solid black;
     }
+
+    & .lower-line {
+        display: flex;
+        justify-content: flex-end;
+    }
 }

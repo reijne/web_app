@@ -24,9 +24,11 @@ export default function Footer() {
 
     return (
         <footer className="footer">
-            <GithubLogo />
-            <LinkedInLogo />
-            <EmailLogo />
+            <div className="socials">
+                <GithubLogo />
+                <LinkedInLogo />
+                <EmailLogo />
+            </div>
             {renderCommitHash()}
         </footer>
     );

@@ -2,11 +2,12 @@ import './Home.css';
 
 import React, { Suspense, useEffect, useState } from 'react';
 
-import { DerpSmiley } from '../components';
+import { CookieConsent, DerpSmiley } from '../components';
 import { FaceLogo } from '../logos';
-import { Page } from '../types';
 
 import './Home.css';
+
+import { Page } from '../App';
 
 // Lazy load the background
 const Background = React.lazy(() => import('./Background'));
@@ -30,7 +31,10 @@ function Home({ handlePageSelect }: { handlePageSelect: (page: Page) => void }) 
                     <Background />
                 </Suspense>
             )}
-            <DerpSmiley />
+            <div className="lower-line">
+                <DerpSmiley />
+                <CookieConsent />
+            </div>
         </div>
     );
 }

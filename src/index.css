@@ -40,20 +40,36 @@ body {
     padding-right: 1rem;
 }
 
-button.primary,
-button.secondary {
-    color: white;
-    border: none;
-    border-radius: 0.25rem;
-    padding: 0.5rem 1rem;
-    cursor: pointer;
+.border {
+    border-bottom: 1px solid black;
+}
 
-    &:hover {
-        filter: brightness(0.9);
+button {
+    background-color: white;
+    font-weight: bold;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    border: 1px solid black;
+
+    &:disabled {
+        cursor: not-allowed;
     }
-    &:active {
-        filter: brightness(0.8);
+    &:not(:disabled) {
+        &:hover {
+            filter: brightness(0.9);
+        }
+        &:active {
+            filter: brightness(0.8);
+        }
     }
+}
+
+button.primary,
+button.secondary,
+button.red,
+button.green {
+    color: white;
+    padding: 0.5rem 1rem;
 }
 
 button.primary {
@@ -62,4 +78,13 @@ button.primary {
 
 button.secondary {
     background-color: var(--secondary-color);
+}
+
+button.red {
+    background-color: red;
+    color: black;
+}
+
+button.green {
+    background-color: green;
 }

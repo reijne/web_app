@@ -1,10 +1,11 @@
 import React, { startTransition, Suspense, useState } from 'react';
 
 import { Loading } from '../components';
-import { Page } from '../types';
 import { SessionStorage } from '../utils';
 
 import './Projects.css';
+
+import { Page } from '../App';
 
 const ColorWheel = React.lazy(() => import('./ColorWheel'));
 const GridDrawer = React.lazy(() => import('./GridDrawer'));
@@ -21,7 +22,7 @@ const PROJECT_MAPPING = {
     demo: <ThreeDemo />,
 };
 
-type ProjectName = keyof typeof PROJECT_MAPPING;
+export type ProjectName = keyof typeof PROJECT_MAPPING;
 
 interface _BaseProject {
     name: ProjectName;
@@ -51,7 +52,7 @@ const THREE_PROJECTS: ThreeProject[] = [
 ];
 
 function Projects({ handlePageSelect }: { handlePageSelect: (page: Page) => void }) {
-    const savedProject = SessionStorage.getItem('project');
+    const savedProject = SessionStorage.project.get();
     const savedSelected = Object.keys(PROJECT_MAPPING).includes(savedProject as ProjectName)
         ? (savedProject as ProjectName)
         : 'colorWheel';
@@ -60,7 +61,7 @@ function Projects({ handlePageSelect }: { handlePageSelect: (page: Page) => void
     const handleProjectSelect = (project: ProjectName) => {
         startTransition(() => {
             setSelectedProject(project);
-            SessionStorage.setItem('project', project);
+            SessionStorage.project.set(project);
         });
     };
 
