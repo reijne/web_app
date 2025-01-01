@@ -59,7 +59,9 @@ const SlimeScene: React.FC = () => {
     useEffect(() => {
         const canvas = canvasRef.current;
         const ctx = canvas?.getContext('2d');
-        if (!canvas || !ctx) return;
+        if (!canvas || !ctx) {
+            return;
+        }
 
         const resizeCanvas = () => {
             const { width, height } = canvas.getBoundingClientRect();
@@ -123,10 +125,18 @@ const SlimeScene: React.FC = () => {
                     p.x += Math.cos(p.angle) * slime.speed.value;
                     p.y += Math.sin(p.angle) * slime.speed.value;
 
-                    if (p.x < 0) p.x = width;
-                    if (p.x > width) p.x = 0;
-                    if (p.y < 0) p.y = height;
-                    if (p.y > height) p.y = 0;
+                    if (p.x < 0) {
+                        p.x = width;
+                    }
+                    if (p.x > width) {
+                        p.x = 0;
+                    }
+                    if (p.y < 0) {
+                        p.y = height;
+                    }
+                    if (p.y > height) {
+                        p.y = 0;
+                    }
                 }
                 // Mark the trail at the particle's position
                 trailBuffer[Math.floor(p.y)][Math.floor(p.x)] = 1;
@@ -199,7 +209,7 @@ const SlimeScene: React.FC = () => {
 
         return () => {
             window.removeEventListener('resize', resizeCanvas);
-            if (animationRef.current) {
+            if (animationRef.current != null) {
                 cancelAnimationFrame(animationRef.current);
             }
         };

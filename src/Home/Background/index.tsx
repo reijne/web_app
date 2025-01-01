@@ -58,7 +58,9 @@ const Background: React.FC = () => {
     useEffect(() => {
         const canvas = canvasRef.current;
         const ctx = canvas?.getContext('2d');
-        if (!canvas || !ctx) return;
+        if (!canvas || !ctx) {
+            return;
+        }
 
         // Resize canvas to full screen
         const resizeCanvas = () => {

@@ -25,7 +25,9 @@ export function DerpSmiley() {
     useEffect(() => {
         const handleMouseMove = (event: MouseEvent) => {
             const smiley = document.querySelector('.derp-smiley');
-            if (!smiley) return;
+            if (!smiley) {
+                return;
+            }
 
             const smileyRect = smiley.getBoundingClientRect();
             const distanceX = Math.abs(event.clientX - smileyRect.left);
@@ -67,10 +69,6 @@ export function DerpSmiley() {
 
 export const CookieConsent = () => {
     const [showBanner, setShowBanner] = useState<boolean>(false);
-    const [settingsOpen, setSettingsOpen] = useState<boolean>(false);
-    const [rememberPage, setRememberPage] = useState<boolean>(
-        SessionStorage.cookies.get() ?? false,
-    );
 
     useEffect(() => {
         const consent = SessionStorage.cookies.get();
@@ -84,24 +82,8 @@ export const CookieConsent = () => {
     const handleConsent = (agree: boolean) => {
         if (agree) {
             SessionStorage.cookies.set(true);
-            setRememberPage(true);
-        } else {
-            SessionStorage.cookies.set(false);
-            setRememberPage(false);
         }
         setShowBanner(false);
-    };
-
-    // Toggle from settings
-    const toggleRememberPage = () => {
-        const newValue = !rememberPage;
-        setRememberPage(newValue);
-        SessionStorage.cookies.set(newValue);
-
-        // Clear session storage if disabled
-        if (!newValue) {
-            SessionStorage.cookies.del();
-        }
     };
 
     return (
@@ -110,47 +92,11 @@ export const CookieConsent = () => {
             {showBanner && (
                 <div className="cookie-banner">
                     <div>
-                        <p>
-                            We solely use functional cookies and don't collect any data whatsoever
-                        </p>
+                        <p>We only use functional cookies, you can keep your data to yourself ;)</p>
                     </div>
-                    <div className="buttons">
-                        <button className="green" onClick={() => handleConsent(true)}>
-                            <span style={{ fontSize: '1rem' }}>✓</span> okay
-                        </button>
-                        <button className="red" onClick={() => handleConsent(false)}>
-                            <span style={{ fontSize: '1rem' }}>✗</span> not okay
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* Gear Icon for Settings */}
-            <button
-                className="gear-icon"
-                disabled={showBanner}
-                onClick={() => setSettingsOpen(!settingsOpen)}
-            >
-                ⛭
-            </button>
-
-            {/* Settings Modal */}
-            {settingsOpen && (
-                <div className="settings-modal border">
-                    <div className="head">
-                        <div className="title">settings</div>
-                        <button className="close" onClick={() => setSettingsOpen(false)}>
-                            ✗
-                        </button>
-                    </div>
-                    <div className="toggle-container">
-                        <label>remember page on reload</label>
-                        <input
-                            type="checkbox"
-                            checked={rememberPage}
-                            onChange={toggleRememberPage}
-                        />
-                    </div>
+                    <button className="green" onClick={() => handleConsent(true)}>
+                        <span style={{ fontSize: '1rem', marginRight: '.25rem' }}>✓</span> okay
+                    </button>
                 </div>
             )}
         </div>

@@ -84,26 +84,14 @@
     align-items: center;
     justify-content: space-between;
     border-radius: 0.25rem;
-    & .buttons {
-        display: flex;
-        /* flex-direction: column; */
-        justify-content: space-between;
-    }
     & button {
+        display: flex;
+        justify-content: space-between;
         margin-left: 1rem;
+        margin-right: 1rem;
         font-size: 1rem;
     }
     z-index: 1000;
-}
-
-.gear-icon {
-    z-index: 1001;
-    font-size: 2rem;
-    position: relative;
-    cursor: pointer;
-    background-color: white;
-    border: 1px solid black;
-    padding: 0.125rem 0.25rem;
 }
 
 .settings-modal {

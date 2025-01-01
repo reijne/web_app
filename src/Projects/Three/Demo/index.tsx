@@ -88,11 +88,15 @@ const DemoScene: React.FC = () => {
 
         // Handle keyboard for speed boost
         const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === 'ArrowUp' || event.key === 'w') speed = 1.5;
+            if (event.key === 'ArrowUp' || event.key === 'w') {
+                speed = 1.5;
+            }
         };
 
         const handleKeyUp = (event: KeyboardEvent) => {
-            if (event.key === 'ArrowUp' || event.key === 'w') speed = 0.3;
+            if (event.key === 'ArrowUp' || event.key === 'w') {
+                speed = 0.3;
+            }
         };
 
         window.addEventListener('keydown', handleKeyDown);
@@ -100,7 +104,9 @@ const DemoScene: React.FC = () => {
 
         // Handle resize
         const resizeObserver = new ResizeObserver(resizeRendererToDisplaySize);
-        if (currentMount) resizeObserver.observe(currentMount);
+        if (currentMount) {
+            resizeObserver.observe(currentMount);
+        }
 
         return () => {
             resizeObserver.disconnect();

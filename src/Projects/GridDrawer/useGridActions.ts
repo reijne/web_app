@@ -78,7 +78,9 @@ const useGridActions = () => {
 
     // Undo the last action by restoring the previous state from the undo stack
     const handleUndo = useCallback(() => {
-        if (undoStack.length === 0) return;
+        if (undoStack.length === 0) {
+            return;
+        }
 
         const previousState = undoStack[undoStack.length - 1];
         setUndoStack(undoStack.slice(0, -1));
@@ -89,7 +91,9 @@ const useGridActions = () => {
 
     // Redo the last undone action by restoring the next state from the redo stack
     const handleRedo = useCallback(() => {
-        if (redoStack.length === 0) return;
+        if (redoStack.length === 0) {
+            return;
+        }
 
         const nextState = redoStack[redoStack.length - 1];
         setRedoStack(redoStack.slice(0, -1));

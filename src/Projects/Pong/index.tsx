@@ -47,9 +47,12 @@ const Pong: React.FC = () => {
             }
         }
         if (ballX > canvasWidth / 2) {
-            if (e.key === 'ArrowUp') setPlayer2Y(y => Math.max(y - 10, 0));
-            if (e.key === 'ArrowDown')
+            if (e.key === 'ArrowUp') {
+                setPlayer2Y(y => Math.max(y - 10, 0));
+            }
+            if (e.key === 'ArrowDown') {
                 setPlayer2Y(y => Math.min(y + 10, canvasHeight - paddleHeight));
+            }
         }
     };
 
@@ -59,9 +62,13 @@ const Pong: React.FC = () => {
     }, [ballX]);
 
     useEffect(() => {
-        if (!canvasRef.current) return;
+        if (!canvasRef.current) {
+            return;
+        }
         const ctx = canvasRef.current.getContext('2d');
-        if (!ctx) return;
+        if (!ctx) {
+            return;
+        }
 
         // Calculate elapsed time
         const deltaTime = (frameTime - lastFrameTime) / 1000; // in seconds

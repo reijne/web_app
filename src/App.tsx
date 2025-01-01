@@ -5,7 +5,7 @@ import Footer from './Footer';
 import Home from './Home';
 import { isProjectName, ProjectName, toProjectName } from './Projects';
 import { SessionStorage } from './utils/session';
-import { handleURLRedirection, parseUrl } from './utils/url';
+import { parseUrl } from './utils/url';
 
 const Projects = React.lazy(() => import('./Projects'));
 
@@ -28,7 +28,6 @@ function App() {
     const handleUrlChange = () => {
         const url = parseUrl(window.location.href);
         if (!url) {
-            console.error('Failed to parse URL.', window.location.href);
             setState(defaultAppState);
             return;
         }
@@ -42,7 +41,6 @@ function App() {
                     selectedProject: toProjectName(project),
                 });
             } else {
-                console.error('invalid project name:', project);
                 setState({
                     page: 'projects',
                     selectedProject: undefined,
@@ -54,8 +52,6 @@ function App() {
     };
 
     useEffect(() => {
-        // Update so we can branch here.
-        handleURLRedirection();
         handleUrlChange();
         window.addEventListener('popstate', handleUrlChange);
         return () => {
@@ -69,7 +65,6 @@ function App() {
         if (url) {
             window.history.pushState({}, '', url.href);
             handleUrlChange();
-            SessionStorage.lastUrl.set(url);
         } else {
             window.history.back();
         }

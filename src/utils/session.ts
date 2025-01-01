@@ -15,6 +15,7 @@ class StoredValue<T> {
     }
 
     get(): T | undefined {
+        // eslint-disable-next-line
         const storedInSession = sessionStorage.getItem(this.key);
         if (storedInSession == null) {
             return undefined;
@@ -25,24 +26,17 @@ class StoredValue<T> {
 
     set(value: T): void {
         const stringified = this.coders.encode(value);
+        // eslint-disable-next-line
         sessionStorage.setItem(this.key, stringified);
     }
 
     del() {
+        // eslint-disable-next-line
         sessionStorage.removeItem(this.key);
     }
 }
 
 export const SessionStorage = {
-    lastUrl: new StoredValue<URL>('lastUrl', {
-        encode: url => url.href,
-        decode: (val: string) => parseUrl(val),
-    }),
-    project: new StoredValue<ProjectName>('project', {
-        encode: project => project,
-        // TODO: Fix this type casting, should be possible to check if we have a valid project name.
-        decode: (val: string) => val as ProjectName,
-    }),
     cookies: new StoredValue<boolean>('cookies', {
         encode: boolean => `${boolean}`,
         decode: (val: string) => val === 'true',
