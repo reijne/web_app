@@ -1,3 +1,5 @@
+import { parseUrl } from './url';
+
 /** Defines the methods to encode a value to string, and parse the string back into what we want. */
 interface Coders<T> {
     encode: (value: T) => string;
@@ -34,6 +36,10 @@ class StoredValue<T> {
 }
 
 export const SessionStorage = {
+    lastUrl: new StoredValue<URL>('lastUrl', {
+        encode: url => url.href,
+        decode: (val: string) => parseUrl(val),
+    }),
     cookies: new StoredValue<boolean>('cookies', {
         encode: boolean => `${boolean}`,
         decode: (val: string) => val === 'true',

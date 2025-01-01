@@ -4,6 +4,7 @@ import { Loading } from './components';
 import Footer from './Footer';
 import Home from './Home';
 import { isProjectName, ProjectName, toProjectName } from './Projects';
+import { SessionStorage } from './utils/session';
 import { parseUrl } from './utils/url';
 
 const Projects = React.lazy(() => import('./Projects'));
@@ -51,6 +52,8 @@ function App() {
     };
 
     useEffect(() => {
+        // Update so we can branch here.
+        handleURLRedirection();
         handleUrlChange();
         window.addEventListener('popstate', handleUrlChange);
         return () => {
@@ -64,8 +67,27 @@ function App() {
         if (url) {
             window.history.pushState({}, '', url.href);
             handleUrlChange();
+            SessionStorage.lastUrl.set(url);
         } else {
             window.history.back();
+        }
+    };
+
+    // On load, check if the user should be redirected
+    const handleURLRedirection = () => {
+        const currentURL = window.location.pathname;
+        const lastURL = SessionStorage.lastUrl.get();
+
+        if (lastURL == null) {
+            return;
+        }
+
+        if (currentURL === '/') {
+            // Prevent redirect loop, clear if explicitly on home page
+            SessionStorage.lastUrl.del();
+        } else if (currentURL !== lastURL.href) {
+            // Redirect to the last URL stored in session
+            navigate(lastURL.href);
         }
     };
 
