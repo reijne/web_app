@@ -1,9 +1,5 @@
-import { Page, PAGES } from '../App';
 import type { ProjectName } from '../Projects';
-
-export function clamp(value: number, min: number, max: number): number {
-    return Math.min(Math.max(value, min), max);
-}
+import { parseUrl } from './url';
 
 /** Defines the methods to encode a value to string, and parse the string back into what we want. */
 interface Coders<T> {
@@ -19,7 +15,7 @@ class StoredValue<T> {
     }
 
     get(): T | undefined {
-        const storedInSession = window.sessionStorage.getItem(this.key);
+        const storedInSession = sessionStorage.getItem(this.key);
         if (storedInSession == null) {
             return undefined;
         }
@@ -29,23 +25,18 @@ class StoredValue<T> {
 
     set(value: T): void {
         const stringified = this.coders.encode(value);
-        window.sessionStorage.setItem(this.key, stringified);
+        sessionStorage.setItem(this.key, stringified);
     }
 
     del() {
-        window.sessionStorage.removeItem(this.key);
+        sessionStorage.removeItem(this.key);
     }
 }
 
 export const SessionStorage = {
-    page: new StoredValue<Page>('page', {
-        encode: page => page,
-        decode: (val: string) => {
-            if (val in PAGES) {
-                return val as Page;
-            }
-            return undefined;
-        },
+    lastUrl: new StoredValue<URL>('lastUrl', {
+        encode: url => url.href,
+        decode: (val: string) => parseUrl(val),
     }),
     project: new StoredValue<ProjectName>('project', {
         encode: project => project,
