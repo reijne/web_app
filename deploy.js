@@ -3,8 +3,8 @@ const { execSync } = require('child_process');
 const S3_BUCKET = 's3://reijne.com'; // Your S3 bucket name
 const CLOUDFRONT_DISTRIBUTION_ID = 'E1M1RRJJS6YZJU'; // Your CloudFront distribution ID
 
-try {
-    // 1. Check if branch is up to date
+// Check if branch is up to date
+function ensureBranchUpToDate() {
     console.log('🔍 Checking if the branch is up to date...');
 
     const branch = execSync('git rev-parse --abbrev-ref HEAD').toString().trim();
@@ -14,8 +14,10 @@ try {
     if (localCommit !== remoteCommit) {
         throw new Error('❌ Local branch is not up to date with remote. Push your changes first.');
     }
+}
 
-    // 2. Check for unstaged and uncommitted changes
+// Check for unstaged and uncommitted changes
+function ensureNoUnstagedAndUncommittedChanges() {
     console.log('🔍 Checking for uncommitted and unstaged changes...');
     const status = execSync('git status --porcelain').toString().trim();
 
@@ -26,16 +28,36 @@ try {
             '❌ You have uncommitted or unstaged changes. Please commit or stash them before deploying.',
         );
     }
+}
 
-    // 3. Build the project
+// Check all linting is in order, including any left over console statements.
+function ensureESLintPasses() {
+    console.log('🔍 Checking linting including any left over console statements...');
+    try {
+        const lintOutput = execSync('npm run lint-no-console', { stdio: 'inherit' });
+        console.log('lintOut:', lintOutput);
+    } catch (error) {
+        console.error('🚨 Detected linting issues:');
+        console.log(error.stdout);
+
+        throw new Error('❌ Fix all of the issues listed above before deploying..');
+    }
+}
+
+// Build the project
+function build() {
     console.log('🚀 Building the project...');
     execSync('npm run build', { stdio: 'inherit' });
+}
 
-    // 4. Deploy to S3
+function deploy() {
+    // Deploy to S3
     console.log(`☁️  Deploying to S3 bucket: ${S3_BUCKET}...`);
     execSync(`aws s3 sync build/ ${S3_BUCKET} --delete`, { stdio: 'inherit' });
+}
 
-    // 5. Create CloudFront Invalidation
+// Create CloudFront Invalidation
+function invalidateCloudFrontDistribution() {
     console.log(
         `🌀 Creating CloudFront invalidation for distribution: ${CLOUDFRONT_DISTRIBUTION_ID}...`,
     );
@@ -55,7 +77,7 @@ try {
 
     // 6. Poll Invalidation Status
     let invalidationStatus = 'InProgress';
-    while (status === 'InProgress') {
+    while (invalidationStatus === 'InProgress') {
         const result = execSync(
             `aws cloudfront get-invalidation --distribution-id ${CLOUDFRONT_DISTRIBUTION_ID} --id ${invalidationId}`,
             { encoding: 'utf-8' },
@@ -63,14 +85,26 @@ try {
         invalidationStatus = JSON.parse(result).Invalidation.Status;
         console.log(`🔄 Invalidation status: ${invalidationStatus}`);
 
-        if (status === 'InProgress') {
-            console.log('⏳ Still in progress... waiting 10 seconds.');
+        if (invalidationStatus === 'InProgress') {
+            console.log('⏳ Still in progress... waiting....');
             execSync('sleep 2');
         }
     }
 
     console.log(`✅ Invalidation ${invalidationId} completed successfully!`);
     console.log(`🎉 Deployment and invalidation process finished!`);
+}
+
+try {
+    // Checks to see if we are in a state ready for deployment.
+    ensureBranchUpToDate();
+    ensureNoUnstagedAndUncommittedChanges();
+    ensureESLintPasses();
+
+    build();
+    deploy();
+
+    invalidateCloudFrontDistribution();
 } catch (error) {
     console.error('\n🚨 Deployment failed: ', error.message);
     process.exit(1);
