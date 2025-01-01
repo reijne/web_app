@@ -6,7 +6,7 @@
         "@types/three": "^0.171.0",
         "@typescript-eslint/eslint-plugin": "^8.19.0",
         "@typescript-eslint/parser": "^8.19.0",
-        "eslint": "^9.17.0",
+        "eslint": "^8.57.1",
         "serve": "^14.2.4",
         "ts-node": "^10.9.2"
     },
@@ -32,15 +32,13 @@
         "deploy": "npm run build-with-hash && npx ts-node deploy.js",
         "test": "react-scripts test",
         "eject": "react-scripts eject",
-        "lint": "eslint .",
-        "lint-no-console": "eslint --max-warnings 0 --rule 'no-console':'error' .",
-        "lint:fix": "eslint . --fix"
+        "lint": "npx eslint src",
+        "lint-no-console": "npx eslint --max-warnings 0 --rule no-console:error src"
     },
     "eslintConfig": {
         "extends": [
             "react-app",
-            "react-app/jest",
-            "./eslint-config.mjs"
+            "react-app/jest"
         ]
     },
     "browserslist": {

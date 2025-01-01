@@ -11,10 +11,7 @@ export default {
     create(context) {
         return {
             MemberExpression(node) {
-                if (
-                    node.object.name === 'sessionStorage'
-                    // && node.parent.type !== 'CallExpression'
-                ) {
+                if (node.object.name === 'sessionStorage') {
                     context.report({
                         node,
                         message:
