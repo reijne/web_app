@@ -2,7 +2,10 @@ export const parseUrl = (path: string, base: string = window.location.origin): U
     try {
         const url = new URL(path, base);
         return url;
-    } catch (_: unknown) {
+    } catch (
+        // eslint-disable-next-line
+        _: unknown
+    ) {
         return undefined;
     }
 };

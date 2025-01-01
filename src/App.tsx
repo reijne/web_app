@@ -4,7 +4,6 @@ import { Loading } from './components';
 import Footer from './Footer';
 import Home from './Home';
 import { isProjectName, ProjectName, toProjectName } from './Projects';
-import { SessionStorage } from './utils/session';
 import { parseUrl } from './utils/url';
 
 const Projects = React.lazy(() => import('./Projects'));

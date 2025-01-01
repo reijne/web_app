@@ -1,6 +1,3 @@
-import type { ProjectName } from '../Projects';
-import { parseUrl } from './url';
-
 /** Defines the methods to encode a value to string, and parse the string back into what we want. */
 interface Coders<T> {
     encode: (value: T) => string;
