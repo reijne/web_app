@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 
 import './Background.css';
 
-import { clamp } from '../../utils';
+import { clamp } from '../../utils/number';
 
 interface Particle {
     x: number;

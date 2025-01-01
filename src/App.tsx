@@ -1,41 +1,95 @@
-import React, { startTransition, Suspense, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 
 import { Loading } from './components';
 import Footer from './Footer';
 import Home from './Home';
-import { SessionStorage } from './utils';
+import { isProjectName, ProjectName, toProjectName } from './Projects';
+import { SessionStorage } from './utils/session';
+import { handleURLRedirection, parseUrl } from './utils/url';
 
 const Projects = React.lazy(() => import('./Projects'));
 
 /** Defines all the pages we have available for App.tsx. */
 export const PAGES = ['home', 'projects'] as const;
 export type Page = (typeof PAGES)[number];
+export const CURRENT_PAGE = 'home';
+
+interface AppState {
+    page: Page;
+    selectedProject?: ProjectName;
+}
+
+const defaultAppState: AppState = { page: 'home', selectedProject: 'colorWheel' };
 
 function App() {
-    const [currentPage, setCurrentPage] = useState<Page>(
-        // Can use cast here, because we will catch any invalid pages in switch.
-        (SessionStorage.page.get() as Page) || 'home',
-    );
+    const [state, setState] = useState<AppState>(defaultAppState);
 
-    const handlePageSelect = (page: Page) => {
-        startTransition(() => {
-            setCurrentPage(page);
-            SessionStorage.page.set(page);
-        });
+    // URL Change Handler
+    const handleUrlChange = () => {
+        const url = parseUrl(window.location.href);
+        if (!url) {
+            console.error('Failed to parse URL.', window.location.href);
+            setState(defaultAppState);
+            return;
+        }
+
+        const pathParts = url.pathname.split('/').filter(Boolean);
+        if (pathParts[0] === 'projects') {
+            const project = pathParts[1];
+            if (isProjectName(project)) {
+                setState({
+                    page: 'projects',
+                    selectedProject: toProjectName(project),
+                });
+            } else {
+                console.error('invalid project name:', project);
+                setState({
+                    page: 'projects',
+                    selectedProject: undefined,
+                });
+            }
+        } else {
+            setState({ page: 'home', selectedProject: undefined });
+        }
+    };
+
+    useEffect(() => {
+        // Update so we can branch here.
+        handleURLRedirection();
+        handleUrlChange();
+        window.addEventListener('popstate', handleUrlChange);
+        return () => {
+            window.removeEventListener('popstate', handleUrlChange);
+        };
+    }, []);
+
+    // Navigation with Type Checking
+    const navigate = (path: string) => {
+        const url = parseUrl(path);
+        if (url) {
+            window.history.pushState({}, '', url.href);
+            handleUrlChange();
+            SessionStorage.lastUrl.set(url);
+        } else {
+            window.history.back();
+        }
     };
 
     const renderPage = () => {
-        switch (currentPage) {
+        switch (state.page) {
             case 'projects':
                 return (
                     <Suspense fallback={<Loading />}>
-                        <Projects handlePageSelect={handlePageSelect} />
+                        <Projects
+                            projectFromUrl={state.selectedProject ?? 'colorWheel'}
+                            navigate={navigate}
+                        />
                     </Suspense>
                 );
             case 'home':
-                return <Home handlePageSelect={handlePageSelect} />;
+                return <Home navigate={navigate} />;
             default:
-                return <Home handlePageSelect={handlePageSelect} />;
+                return <Home navigate={navigate} />;
         }
     };
 

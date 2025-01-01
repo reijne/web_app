@@ -82,7 +82,9 @@ const SlimeScene: React.FC = () => {
         initializeParticles(canvas);
 
         const drawParticles = () => {
-            if (!ctx || !canvas || !trailBufferRef.current) return;
+            if (ctx == null || canvas == null || trailBufferRef.current == null) {
+                return;
+            }
 
             const width = canvas.width;
             const height = canvas.height;

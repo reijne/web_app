@@ -1,11 +1,8 @@
-import React, { startTransition, Suspense, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 
 import { Loading } from '../components';
-import { SessionStorage } from '../utils';
 
 import './Projects.css';
-
-import { Page } from '../App';
 
 const ColorWheel = React.lazy(() => import('./ColorWheel'));
 const GridDrawer = React.lazy(() => import('./GridDrawer'));
@@ -23,6 +20,13 @@ const PROJECT_MAPPING = {
 };
 
 export type ProjectName = keyof typeof PROJECT_MAPPING;
+export const isProjectName = (name: string) => name in PROJECT_MAPPING;
+export const toProjectName = (name: string): ProjectName | undefined => {
+    if (!isProjectName(name)) {
+        return undefined;
+    }
+    return name as ProjectName;
+};
 
 interface _BaseProject {
     name: ProjectName;
@@ -51,18 +55,23 @@ const THREE_PROJECTS: ThreeProject[] = [
     { type: 'three', name: 'demo', label: 'Three Demo', icon: '③' },
 ];
 
-function Projects({ handlePageSelect }: { handlePageSelect: (page: Page) => void }) {
-    const savedProject = SessionStorage.project.get();
-    const savedSelected = Object.keys(PROJECT_MAPPING).includes(savedProject as ProjectName)
-        ? (savedProject as ProjectName)
-        : 'colorWheel';
-    const [selectedProject, setSelectedProject] = useState<ProjectName>(savedSelected);
+function Projects({
+    projectFromUrl,
+    navigate,
+}: {
+    projectFromUrl: ProjectName;
+    navigate: (destination: string) => void;
+}) {
+    const [selectedProject, setSelectedProject] = useState<ProjectName>(projectFromUrl);
+
+    // Determine if this is needed.
+    useEffect(() => {
+        setSelectedProject(projectFromUrl);
+    }, [projectFromUrl]);
 
     const handleProjectSelect = (project: ProjectName) => {
-        startTransition(() => {
-            setSelectedProject(project);
-            SessionStorage.project.set(project);
-        });
+        navigate(`/projects/${project}`);
+        setSelectedProject(project);
     };
 
     return (
@@ -70,7 +79,7 @@ function Projects({ handlePageSelect }: { handlePageSelect: (page: Page) => void
             <Sidebar
                 selectedProject={selectedProject}
                 handleProjectSelect={handleProjectSelect}
-                handlePageSelect={handlePageSelect}
+                navigate={navigate}
             />
             <Suspense fallback={<Loading />} key={selectedProject}>
                 <div className="projects-content">{PROJECT_MAPPING[selectedProject]}</div>
@@ -82,10 +91,10 @@ function Projects({ handlePageSelect }: { handlePageSelect: (page: Page) => void
 interface SidebarProps {
     selectedProject: ProjectName | null;
     handleProjectSelect: (project: ProjectName) => void;
-    handlePageSelect: (page: Page) => void;
+    navigate: (destination: string) => void;
 }
 
-function Sidebar({ selectedProject, handleProjectSelect, handlePageSelect }: SidebarProps) {
+function Sidebar({ selectedProject, handleProjectSelect, navigate }: SidebarProps) {
     const renderSelectProjectButton = (project: Project) => (
         <button
             key={project.name}
@@ -99,7 +108,8 @@ function Sidebar({ selectedProject, handleProjectSelect, handlePageSelect }: Sid
 
     return (
         <div className="sidebar">
-            <div onClick={() => handlePageSelect('home')} className="sidebar-link home-link">
+            {/* // TODO: determine what to navigate to for home... */}
+            <div onClick={() => navigate('')} className="sidebar-link home-link">
                 <div className="icon">⌂</div> <h2>Home</h2>
             </div>
 

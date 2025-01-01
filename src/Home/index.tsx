@@ -7,12 +7,10 @@ import { FaceLogo } from '../logos';
 
 import './Home.css';
 
-import { Page } from '../App';
-
 // Lazy load the background
 const Background = React.lazy(() => import('./Background'));
 
-function Home({ handlePageSelect }: { handlePageSelect: (page: Page) => void }) {
+function Home({ navigate }: { navigate: (destination: string) => void }) {
     const [loadBackground, setLoadBackground] = useState(false);
 
     useEffect(() => {
@@ -23,7 +21,7 @@ function Home({ handlePageSelect }: { handlePageSelect: (page: Page) => void }) 
         <div className="home">
             <div className="main-content">
                 <Header />
-                <ProjectsButton handlePageSelect={handlePageSelect} />
+                <ProjectsButton navigate={navigate} />
             </div>
             {/* Background only loads AFTER the timeout */}
             {loadBackground && (
@@ -63,10 +61,10 @@ function HeaderText() {
     );
 }
 
-function ProjectsButton({ handlePageSelect }: { handlePageSelect: (page: Page) => void }) {
+function ProjectsButton({ navigate }: { navigate: (destination: string) => void }) {
     return (
         <div className="projects-button-container">
-            <button className="projects-button" onClick={() => handlePageSelect('projects')}>
+            <button className="projects-button" onClick={() => navigate('/projects')}>
                 <code>View Projects</code>
             </button>
         </div>

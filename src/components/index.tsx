@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 import './components.css';
 
-import { SessionStorage } from '../utils';
+import { SessionStorage } from '../utils/session';
 
 export function Loading({ resource = '' }: { resource?: string }) {
     return (
@@ -100,8 +100,6 @@ export const CookieConsent = () => {
 
         // Clear session storage if disabled
         if (!newValue) {
-            SessionStorage.page.del();
-            SessionStorage.project.del();
             SessionStorage.cookies.del();
         }
     };
@@ -133,7 +131,7 @@ export const CookieConsent = () => {
                 disabled={showBanner}
                 onClick={() => setSettingsOpen(!settingsOpen)}
             >
-                ⚙️
+                ⛭
             </button>
 
             {/* Settings Modal */}
