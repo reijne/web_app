@@ -88,3 +88,16 @@ button.red {
 button.green {
     background-color: green;
 }
+
+.flex-row {
+    display: flex;
+}
+
+.flex-column {
+    display: flex;
+    flex-direction: column;
+}
+
+.p-0 {
+    padding: 0;
+}

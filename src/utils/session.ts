@@ -1,3 +1,4 @@
+import { SlimeConfig, SlimeParticle } from '../Projects/Slime';
 import { parseUrl } from './url';
 
 /** Defines the methods to encode a value to string, and parse the string back into what we want. */
@@ -43,5 +44,15 @@ export const SessionStorage = {
     cookies: new StoredValue<boolean>('cookies', {
         encode: boolean => `${boolean}`,
         decode: (val: string) => val === 'true',
+    }),
+    slimeConfig: new StoredValue<SlimeConfig>('slimeConfig', {
+        encode: config => JSON.stringify(config),
+        // TODO: Add validation of default vals, min and max.
+        decode: (val: string) => JSON.parse(val),
+    }),
+    slimeParticles: new StoredValue<SlimeParticle[]>('slimeParticles', {
+        encode: particles => JSON.stringify(particles),
+        // TODO: Add fun validation later.
+        decode: (val: string) => JSON.parse(val),
     }),
 };

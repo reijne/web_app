@@ -1,5 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 
+import { hslToRgb } from '../../utils/colors';
+import { SessionStorage } from '../../utils/session';
+
 import './Slime.css';
 
 interface ConfigValue {
@@ -9,16 +12,17 @@ interface ConfigValue {
     max: number;
 }
 
-interface SlimeConfig {
+export interface SlimeConfig {
     particleCount: ConfigValue;
     trailDecay: ConfigValue;
-    speed: ConfigValue;
+    moveSpeed: ConfigValue;
     sensorAngle: ConfigValue;
     sensorDistance: ConfigValue;
     turnSpeed: ConfigValue;
+    jitter: ConfigValue;
 }
 
-interface SlimeParticle {
+export interface SlimeParticle {
     x: number;
     y: number;
     angle: number;
@@ -26,21 +30,102 @@ interface SlimeParticle {
 
 // Default configuration
 const DEFAULT_SLIME_CONFIG: SlimeConfig = {
-    particleCount: { value: 500, default: 500, min: 100, max: 20000 },
-    trailDecay: { value: 0.98, default: 0.98, min: 0.9, max: 1 },
-    speed: { value: 1.5, default: 1.5, min: 0.5, max: 3 },
+    particleCount: { value: 500, default: 500, min: 500, max: 20000 },
+    trailDecay: { value: 0.99, default: 0.99, min: 0.96, max: 1 },
+    moveSpeed: { value: 1.5, default: 1.5, min: 0.5, max: 3 },
     sensorAngle: { value: Math.PI / 4, default: Math.PI / 4, min: Math.PI / 8, max: Math.PI / 2 },
     sensorDistance: { value: 20, default: 20, min: 5, max: 40 },
     turnSpeed: { value: 0.2, default: 0.2, min: 0.05, max: 0.4 },
+    jitter: { value: 2, default: 2, min: 0, max: 8 },
 };
+
+const REPULSION = {
+    minRadiusPercent: 0.001,
+    maxRadiusPercent: 0.5,
+    growPercentPerTick: 0.001,
+};
+
+const COLOR_FADE_SPEED = 1;
 
 function createParticle(canvas: HTMLCanvasElement): SlimeParticle {
     return {
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
+        x: canvas.width / 2 + ((Math.random() - 0.5) * canvas.width) / 20,
+        y: canvas.height / 2 + ((Math.random() - 0.5) * canvas.height) / 20,
         angle: Math.random() * Math.PI * 2,
     };
 }
+
+function clampToCanvas(SlimeParticle: SlimeParticle, canvas: HTMLCanvasElement): SlimeParticle {
+    const { width, height } = canvas;
+    const { x, y, angle } = SlimeParticle;
+
+    if (x < 0) {
+        return { ...SlimeParticle, x: width };
+    } else if (x > width) {
+        return { ...SlimeParticle, x: 0 };
+    }
+
+    if (y < 0) {
+        return { ...SlimeParticle, y: height };
+    } else if (y > height) {
+        return { ...SlimeParticle, y: 0 };
+    }
+
+    return { ...SlimeParticle, angle };
+}
+
+function getSlimeParticles(
+    previousRef: SlimeParticle[],
+    canvas: HTMLCanvasElement,
+    slime: SlimeConfig,
+): SlimeParticle[] {
+    // Handle old boi;
+    if (previousRef.length === slime.particleCount.value) {
+        return previousRef.map(particle => clampToCanvas(particle, canvas));
+    }
+
+    const fromSession = SessionStorage.slimeParticles.get();
+    if (fromSession?.length === slime.particleCount.value) {
+        return fromSession.map(particle => clampToCanvas(particle, canvas));
+    }
+
+    return Array.from({ length: slime.particleCount.value }, () => createParticle(canvas));
+}
+
+function getTrailBuffer(
+    previousBuffer: number[][] | null,
+    width: number,
+    height: number,
+): number[][] {
+    if (
+        previousBuffer != null &&
+        previousBuffer.length === width &&
+        previousBuffer[0].length === height
+    ) {
+        return previousBuffer;
+    }
+    return Array.from({ length: height + 1 }, () => Array(width + 1).fill(0));
+}
+
+type ClickBehaviorAction = 'pull' | 'push' | 'none';
+function getNextClickBehavior(current: ClickBehaviorAction): ClickBehaviorAction {
+    switch (current) {
+        case 'pull':
+            return 'push';
+        case 'push':
+            return 'none';
+        case 'none':
+            return 'pull';
+        default:
+            throw new Error('Invalid click behavior');
+    }
+}
+
+const CLICK_BEHAVIOR_ICONS = {
+    pull: '⌾',
+    push: '⧂',
+    none: '⍉',
+};
 
 const SlimeScene: React.FC = () => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -48,20 +133,26 @@ const SlimeScene: React.FC = () => {
     const trailBufferRef = useRef<number[][] | null>(null);
     const animationRef = useRef<number | null>(null);
 
+    const [clickBehavior, setClickBehavior] = useState<'pull' | 'push' | 'none'>('pull');
+    const [isRunning, setIsRunning] = useState<boolean>(true);
+    const [reset, setReset] = useState(false);
     const [slime, setSlime] = useState(DEFAULT_SLIME_CONFIG);
-    const [isRunning, setIsRunning] = useState(true);
-    const [showConfig, setShowConfig] = useState(true);
 
     const initTrailBuffer = (width: number, height: number) => {
-        trailBufferRef.current = Array.from({ length: height + 1 }, () => Array(width + 1).fill(0));
+        trailBufferRef.current = getTrailBuffer(trailBufferRef.current, width, height);
     };
 
     useEffect(() => {
         const canvas = canvasRef.current;
         const ctx = canvas?.getContext('2d');
-        if (!canvas || !ctx) {
+        if (canvas == null || ctx == null) {
             return;
         }
+
+        let freezeFrame: ImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+        const mouse = { x: 0, y: 0, down: false, size: REPULSION.minRadiusPercent };
+        let frame = 0;
 
         const resizeCanvas = () => {
             const { width, height } = canvas.getBoundingClientRect();
@@ -74,69 +165,160 @@ const SlimeScene: React.FC = () => {
         };
 
         const initializeParticles = (canvas: HTMLCanvasElement) => {
-            particlesRef.current = Array.from({ length: slime.particleCount.value }, () =>
-                createParticle(canvas),
-            );
+            const previousParticles = particlesRef.current;
+            particlesRef.current = getSlimeParticles(previousParticles, canvas, slime);
+        };
+
+        const handleMouseMove = (e: MouseEvent) => {
+            const rect = canvas.getBoundingClientRect();
+            mouse.x = e.clientX - rect.left;
+            mouse.y = e.clientY - rect.top;
+        };
+
+        const handleMouseDown = () => {
+            mouse.down = true;
+        };
+
+        const handleMouseUp = () => {
+            mouse.down = false;
         };
 
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
-        initializeParticles(canvas);
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mousedown', handleMouseDown);
+        window.addEventListener('mouseup', handleMouseUp);
 
-        const drawParticles = () => {
+        const draw = () => {
             if (ctx == null || canvas == null || trailBufferRef.current == null) {
+                return;
+            }
+
+            if (!isRunning) {
+                ctx.putImageData(freezeFrame, 0, 0);
+                animationRef.current = requestAnimationFrame(draw);
                 return;
             }
 
             const width = canvas.width;
             const height = canvas.height;
+            const screenSize = Math.min(width, height);
             const trailBuffer = trailBufferRef.current;
 
-            // **Decay the trail buffer only if running**
-            if (isRunning) {
-                for (let y = 0; y < height - 1; y++) {
-                    for (let x = 0; x < width - 1; x++) {
-                        trailBuffer[y][x] *= slime.trailDecay.value;
-                    }
+            decayExistingTrails(width, height, trailBuffer);
+            simulateTrailFollowing(width, height);
+            drawTrails(width, height, trailBuffer, frame);
+
+            moveAndDrawSlimes(screenSize, width, height, trailBuffer);
+            drawMouseDownBubble(screenSize);
+
+            animationRef.current = requestAnimationFrame(draw);
+            frame = (frame + COLOR_FADE_SPEED) % 360;
+        };
+
+        const decayExistingTrails = (width: number, height: number, trailBuffer: number[][]) => {
+            // Decay the trail buffer
+            for (let y = 0; y < height - 1; y++) {
+                for (let x = 0; x < width - 1; x++) {
+                    trailBuffer[y][x] *= slime.trailDecay.value;
                 }
             }
+        };
 
-            // **Simulate trail following**
-            simulateTrailFollowing(ctx, width, height);
+        const drawMouseDownBubble = (screenSize: number) => {
+            if (clickBehavior === ('none' as const)) {
+                return;
+            }
+            if (mouse.down) {
+                const limit =
+                    clickBehavior === 'pull'
+                        ? REPULSION.maxRadiusPercent
+                        : REPULSION.maxRadiusPercent / 2;
+                if (mouse.size < limit) {
+                    mouse.size += REPULSION.growPercentPerTick;
+                }
+                ctx.fillStyle = 'rgba(0, 0, 255, 0.01)';
+                ctx.beginPath();
+                ctx.arc(mouse.x, mouse.y, mouse.size * screenSize, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(125, 125, 125, 0.8)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+        };
 
-            // Render the trail buffer
+        const drawTrails = (
+            width: number,
+            height: number,
+            trailBuffer: number[][],
+            frame: number,
+        ) => {
             const imageData = ctx.createImageData(width, height);
             for (let y = 0; y < height - 1; y++) {
                 for (let x = 0; x < width - 1; x++) {
                     const index = (y * width + x) * 4;
-                    const intensity = trailBuffer[y][x] * 255;
-                    imageData.data[index] = intensity;
-                    imageData.data[index + 1] = intensity;
-                    imageData.data[index + 2] = intensity;
-                    imageData.data[index + 3] = 255; // Alpha
+                    const intensity = trailBuffer[y][x];
+
+                    // Convert HSL to RGB for color application
+                    const [r, g, b] = hslToRgb(
+                        (frame % 360) / 360, // Hue depends on frame, so rainbow effect over time.
+                        1, // Saturation always full.
+                        intensity,
+                    );
+
+                    // Apply RGB to image data
+                    imageData.data[index] = r;
+                    imageData.data[index + 1] = g;
+                    imageData.data[index + 2] = b;
+                    imageData.data[index + 3] = 255; // Alpha channel
                 }
             }
             ctx.putImageData(imageData, 0, 0);
+        };
 
+        const moveAndDrawSlimes = (
+            screenSize: number,
+            width: number,
+            height: number,
+            trailBuffer: number[][],
+        ) => {
             // Draw slime particles
-            ctx.fillStyle = 'rgb(134, 255, 188)';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
             particlesRef.current.forEach(p => {
-                if (isRunning) {
-                    p.x += Math.cos(p.angle) * slime.speed.value;
-                    p.y += Math.sin(p.angle) * slime.speed.value;
+                if (clickBehavior !== 'none' && mouse.down) {
+                    // Angle away from mouse down.
+                    const dx = p.x - mouse.x;
+                    const dy = p.y - mouse.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
 
-                    if (p.x < 0) {
-                        p.x = width;
+                    if (distance < mouse.size * screenSize) {
+                        if (clickBehavior === 'push') {
+                            p.angle = Math.atan2(dy, dx);
+                        }
+                        if (clickBehavior === 'pull') {
+                            p.angle = Math.atan2(dy, dx) + Math.PI;
+                        }
                     }
-                    if (p.x > width) {
-                        p.x = 0;
-                    }
-                    if (p.y < 0) {
-                        p.y = height;
-                    }
-                    if (p.y > height) {
-                        p.y = 0;
-                    }
+                }
+
+                p.x +=
+                    Math.cos(p.angle) *
+                    (slime.moveSpeed.value + Math.random() * slime.jitter.value);
+                p.y +=
+                    Math.sin(p.angle) *
+                    (slime.moveSpeed.value + Math.random() * slime.jitter.value);
+
+                if (p.x < 0) {
+                    p.x = width;
+                }
+                if (p.x > width) {
+                    p.x = 0;
+                }
+                if (p.y < 0) {
+                    p.y = height;
+                }
+                if (p.y > height) {
+                    p.y = 0;
                 }
                 // Mark the trail at the particle's position
                 trailBuffer[Math.floor(p.y)][Math.floor(p.x)] = 1;
@@ -146,17 +328,9 @@ const SlimeScene: React.FC = () => {
                 ctx.arc(p.x, p.y, 1, 0, Math.PI * 2);
                 ctx.fill();
             });
-
-            if (isRunning) {
-                animationRef.current = requestAnimationFrame(drawParticles);
-            }
         };
 
-        const simulateTrailFollowing = (
-            ctx: CanvasRenderingContext2D,
-            width: number,
-            height: number,
-        ) => {
+        const simulateTrailFollowing = (width: number, height: number) => {
             const trailBuffer = trailBufferRef.current;
             if (trailBuffer == null) {
                 return;
@@ -205,15 +379,23 @@ const SlimeScene: React.FC = () => {
             });
         };
 
-        drawParticles();
+        // Starts the animation loop to update and draw the scene.
+        draw();
 
         return () => {
+            freezeFrame = ctx.getImageData(0, 0, canvas.width, canvas.height);
             window.removeEventListener('resize', resizeCanvas);
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mousedown', handleMouseDown);
+            window.removeEventListener('mouseup', handleMouseUp);
             if (animationRef.current != null) {
                 cancelAnimationFrame(animationRef.current);
             }
+            // Store the state of the sim for later.
+            SessionStorage.slimeConfig.set(slime);
+            SessionStorage.slimeParticles.set(particlesRef.current);
         };
-    }, [slime, isRunning]);
+    }, [slime, isRunning, clickBehavior, reset]);
 
     const toggleSimulation = () => {
         setIsRunning(!isRunning);
@@ -221,41 +403,61 @@ const SlimeScene: React.FC = () => {
 
     return (
         <div className="slime-container">
-            <canvas
-                ref={canvasRef}
-                className={`slime-scene ${showConfig ? 'show-config' : ''}`}
-            ></canvas>
+            <canvas ref={canvasRef} className="slime-scene show-config"></canvas>
 
             <div className="controls">
-                <button className="play-pause" onClick={toggleSimulation}>
+                <button
+                    className="play-pause secondary icon p-0"
+                    onClick={() => toggleSimulation()}
+                >
                     {isRunning ? '⏸' : '▶'}
                 </button>
-                <button className="config" onClick={() => setShowConfig(!showConfig)}>
-                    ⚙
+                <button
+                    className="reset red icon p-0"
+                    onClick={() => {
+                        SessionStorage.slimeConfig.del();
+                        SessionStorage.slimeParticles.del();
+                        particlesRef.current = [];
+                        setReset(!reset);
+                    }}
+                >
+                    ↻
                 </button>
-                {showConfig && (
-                    <div className="config-panel">
-                        {Object.entries(DEFAULT_SLIME_CONFIG).map(([key, { min, max, value }]) => (
-                            <div className="labeled-input" key={key}>
-                                <label>{key}</label>
-                                <input
-                                    type="range"
-                                    min={min}
-                                    max={max}
-                                    step={(max - min) / 5}
-                                    value={value.toFixed(2)}
-                                    onChange={e => {
-                                        const newSlime = { ...slime }; // Create a shallow copy of the slime object
-                                        newSlime[key as keyof SlimeConfig].value = parseFloat(
-                                            e.target.value,
-                                        ); // Update value directly
-                                        setSlime(newSlime); // Update state with the modified object
-                                    }}
-                                />
-                            </div>
-                        ))}
-                    </div>
-                )}
+                <div className="click-action-wrapper">
+                    Cursor:
+                    <button
+                        className={`click-action ${clickBehavior}`}
+                        onClick={() => {
+                            setClickBehavior(getNextClickBehavior(clickBehavior));
+                        }}
+                    >
+                        {clickBehavior}
+                        {CLICK_BEHAVIOR_ICONS[clickBehavior]}
+                    </button>
+                </div>
+
+                <div className="config-panel">
+                    {Object.entries(DEFAULT_SLIME_CONFIG).map(([key, { min, max, value }]) => (
+                        <div className="labeled-input" key={key}>
+                            <label>{key}</label>
+                            <input
+                                type="range"
+                                min={min}
+                                max={max}
+                                step={(max - min) / 5}
+                                value={value.toFixed(2)}
+                                onChange={e => {
+                                    const newSlime = { ...slime }; // Create a shallow copy of the slime object
+                                    newSlime[key as keyof SlimeConfig].value = parseFloat(
+                                        e.target.value,
+                                    ); // Update value directly
+                                    setSlime(newSlime); // Update state with the modified object
+                                }}
+                            />
+                            <small>{value.toFixed(2)}</small>
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
     );

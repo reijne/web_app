@@ -5,43 +5,6 @@
     flex-direction: column;
     overflow: hidden;
 
-    & .controls {
-        display: flex;
-        flex-direction: row;
-        justify-content: start;
-
-        & button {
-            font-size: 3rem;
-            padding: 0;
-            margin-top: 0.25rem;
-            margin-right: 0.25rem;
-            display: flex;
-            flex-shrink: 0;
-            align-items: center;
-            justify-content: center;
-            width: 3rem !important;
-            height: 3rem !important;
-
-            background-color: var(--secondary-color);
-            color: white;
-            border: 1px solid var(--off-black);
-            border-radius: 0.25rem;
-            cursor: pointer;
-            &:hover {
-                filter: brightness(0.9);
-            }
-            &:active {
-                filter: brightness(0.8);
-            }
-            &.config {
-                padding-bottom: 0.4rem;
-            }
-            &.play-pause {
-                padding-top: 0.2rem;
-            }
-        }
-    }
-
     & .slime-scene {
         width: 100%;
         height: 80%;
@@ -52,6 +15,8 @@
     & .config-panel {
         width: 100%;
         display: flex;
+        flex-grow: 1;
+        flex-wrap: wrap;
         justify-content: space-around;
         align-items: center;
         margin-left: 0.5rem;
@@ -60,6 +25,34 @@
         & .labeled-input {
             display: flex;
             flex-direction: column;
+        }
+    }
+
+    & .click-action-wrapper {
+        justify-content: start;
+        text-align: left;
+        margin-left: 1rem;
+        flex-shrink: 1;
+    }
+
+    & .controls {
+        display: flex;
+        flex-direction: row;
+        justify-content: start;
+    }
+
+    & .click-action {
+        color: white;
+        font-size: 2rem;
+
+        &.none {
+            background-color: grey;
+        }
+        &.push {
+            background-color: green;
+        }
+        &.pull {
+            background-color: red;
         }
     }
 }
