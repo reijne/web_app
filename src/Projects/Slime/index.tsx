@@ -31,7 +31,7 @@ export interface SlimeParticle {
 // Default configuration
 const DEFAULT_SLIME_CONFIG: SlimeConfig = {
     particleCount: { value: 500, default: 500, min: 500, max: 20000 },
-    trailDecay: { value: 0.99, default: 0.99, min: 0.96, max: 1 },
+    trailDecay: { value: 0.99, default: 0.99, min: 0.94, max: 1 },
     moveSpeed: { value: 1.5, default: 1.5, min: 0.5, max: 3 },
     sensorAngle: { value: Math.PI / 4, default: Math.PI / 4, min: Math.PI / 8, max: Math.PI / 2 },
     sensorDistance: { value: 20, default: 20, min: 5, max: 40 },
@@ -99,8 +99,8 @@ function getTrailBuffer(
 ): number[][] {
     if (
         previousBuffer != null &&
-        previousBuffer.length === width &&
-        previousBuffer[0].length === height
+        previousBuffer.length === height + 1 &&
+        previousBuffer[0].length === width + 1
     ) {
         return previousBuffer;
     }
@@ -135,8 +135,9 @@ const SlimeScene: React.FC = () => {
 
     const [clickBehavior, setClickBehavior] = useState<'pull' | 'push' | 'none'>('pull');
     const [isRunning, setIsRunning] = useState<boolean>(true);
-    const [reset, setReset] = useState(false);
+    const [reset, setReset] = useState(1);
     const [slime, setSlime] = useState(DEFAULT_SLIME_CONFIG);
+    const [fullScreen, setFullScreen] = useState(false);
 
     const initTrailBuffer = (width: number, height: number) => {
         trailBufferRef.current = getTrailBuffer(trailBufferRef.current, width, height);
@@ -144,7 +145,7 @@ const SlimeScene: React.FC = () => {
 
     useEffect(() => {
         const canvas = canvasRef.current;
-        const ctx = canvas?.getContext('2d');
+        const ctx = canvas?.getContext('2d', { willReadFrequently: true });
         if (canvas == null || ctx == null) {
             return;
         }
@@ -395,15 +396,46 @@ const SlimeScene: React.FC = () => {
             SessionStorage.slimeConfig.set(slime);
             SessionStorage.slimeParticles.set(particlesRef.current);
         };
-    }, [slime, isRunning, clickBehavior, reset]);
+    }, [slime, isRunning, clickBehavior, reset, fullScreen]);
 
     const toggleSimulation = () => {
         setIsRunning(!isRunning);
     };
 
+    const performReset = () => {
+        SessionStorage.slimeConfig.del();
+        SessionStorage.slimeParticles.del();
+        particlesRef.current = [];
+        setReset(reset + 1);
+    };
+
+    useEffect(() => {
+        const handleKeydown = (keydown: KeyboardEvent) => {
+            switch (keydown.key) {
+                case 'r':
+                    return performReset();
+                case 'f':
+                    return setFullScreen(!fullScreen);
+                case ' ':
+                    return toggleSimulation();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeydown);
+        return () => {
+            window.removeEventListener('keydown', handleKeydown);
+        };
+    }, [reset, fullScreen, isRunning]);
+
     return (
         <div className="slime-container">
-            <canvas ref={canvasRef} className="slime-scene show-config"></canvas>
+            <button className="toggle-full-screen" onClick={() => setFullScreen(!fullScreen)}>
+                {fullScreen ? '-' : '+'}
+            </button>
+            <canvas
+                ref={canvasRef}
+                className={`slime-scene ${fullScreen ? 'full-screen' : ''}`}
+            ></canvas>
 
             <div className="controls">
                 <button
@@ -412,15 +444,7 @@ const SlimeScene: React.FC = () => {
                 >
                     {isRunning ? '⏸' : '▶'}
                 </button>
-                <button
-                    className="reset red icon p-0"
-                    onClick={() => {
-                        SessionStorage.slimeConfig.del();
-                        SessionStorage.slimeParticles.del();
-                        particlesRef.current = [];
-                        setReset(!reset);
-                    }}
-                >
+                <button className="reset red icon p-0" onClick={() => performReset()}>
                     ↻
                 </button>
                 <div className="click-action-wrapper">

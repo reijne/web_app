@@ -91,44 +91,5 @@
         margin-right: 1rem;
         font-size: 1rem;
     }
-    z-index: 1000;
-}
-
-.settings-modal {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background-color: white;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-    z-index: 1100;
-    display: flex;
-    flex-direction: column;
-
-    & .head {
-        display: flex;
-        padding-left: 0.5rem;
-        border-bottom: 1px solid black;
-        justify-content: space-between;
-        align-items: center;
-
-        & .title {
-            font-weight: bold;
-        }
-        & .close {
-            font-size: 2rem;
-            padding: 0rem 0.5rem;
-            border-radius: 0;
-            border-right: 0;
-            border-top: 0;
-            border-bottom: 0;
-        }
-    }
-
-    & .toggle-container {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 1rem 0.5rem;
-    }
+    z-index: 100;
 }
