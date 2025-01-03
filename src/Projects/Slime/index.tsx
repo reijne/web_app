@@ -37,6 +37,7 @@ const DEFAULT_SLIME_CONFIG: SlimeConfig = {
     sensorDistance: { value: 20, default: 20, min: 5, max: 40 },
     turnSpeed: { value: 0.2, default: 0.2, min: 0.05, max: 0.4 },
     jitter: { value: 2, default: 2, min: 0, max: 8 },
+    ...SessionStorage.slimeConfig.get(),
 };
 
 const REPULSION = {
@@ -97,14 +98,23 @@ function getTrailBuffer(
     width: number,
     height: number,
 ): number[][] {
-    if (
-        previousBuffer != null &&
-        previousBuffer.length === height + 1 &&
-        previousBuffer[0].length === width + 1
-    ) {
-        return previousBuffer;
+    // Create a new buffer with the updated size
+    const newBuffer = Array.from({ length: height + 1 }, () => Array(width + 1).fill(0));
+
+    // If we have an old buffer, copy over valid overlapping cells
+    if (previousBuffer) {
+        // Limit y to the lesser of old/new heights
+        const copyHeight = Math.min(previousBuffer.length, newBuffer.length);
+        for (let y = 0; y < copyHeight; y++) {
+            // Limit x to the lesser of old/new widths
+            const copyWidth = Math.min(previousBuffer[y].length, newBuffer[y].length);
+            for (let x = 0; x < copyWidth; x++) {
+                newBuffer[y][x] = previousBuffer[y][x];
+            }
+        }
     }
-    return Array.from({ length: height + 1 }, () => Array(width + 1).fill(0));
+
+    return newBuffer;
 }
 
 type ClickBehaviorAction = 'pull' | 'push' | 'none';
@@ -132,6 +142,7 @@ const SlimeScene: React.FC = () => {
     const particlesRef = useRef<SlimeParticle[]>([]);
     const trailBufferRef = useRef<number[][] | null>(null);
     const animationRef = useRef<number | null>(null);
+    const frameRef = useRef<number>(0);
 
     const [clickBehavior, setClickBehavior] = useState<'pull' | 'push' | 'none'>('pull');
     const [isRunning, setIsRunning] = useState<boolean>(true);
@@ -151,9 +162,9 @@ const SlimeScene: React.FC = () => {
         }
 
         let freezeFrame: ImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        let frame = frameRef.current;
 
         const mouse = { x: 0, y: 0, down: false, size: REPULSION.minRadiusPercent };
-        let frame = 0;
 
         const resizeCanvas = () => {
             const { width, height } = canvas.getBoundingClientRect();
@@ -385,6 +396,7 @@ const SlimeScene: React.FC = () => {
 
         return () => {
             freezeFrame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            frameRef.current = frame;
             window.removeEventListener('resize', resizeCanvas);
             window.removeEventListener('mousemove', handleMouseMove);
             window.removeEventListener('mousedown', handleMouseDown);
@@ -392,8 +404,6 @@ const SlimeScene: React.FC = () => {
             if (animationRef.current != null) {
                 cancelAnimationFrame(animationRef.current);
             }
-            // Store the state of the sim for later.
-            SessionStorage.slimeConfig.set(slime);
             SessionStorage.slimeParticles.set(particlesRef.current);
         };
     }, [slime, isRunning, clickBehavior, reset, fullScreen]);
@@ -403,9 +413,9 @@ const SlimeScene: React.FC = () => {
     };
 
     const performReset = () => {
-        SessionStorage.slimeConfig.del();
         SessionStorage.slimeParticles.del();
         particlesRef.current = [];
+        trailBufferRef.current = [];
         setReset(reset + 1);
     };
 
@@ -475,6 +485,7 @@ const SlimeScene: React.FC = () => {
                                     newSlime[key as keyof SlimeConfig].value = parseFloat(
                                         e.target.value,
                                     ); // Update value directly
+                                    // SessionStorage.slimeConfig.set(newSlime);
                                     setSlime(newSlime); // Update state with the modified object
                                 }}
                             />
