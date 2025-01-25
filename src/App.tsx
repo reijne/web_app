@@ -59,7 +59,7 @@ function App() {
         return () => {
             window.removeEventListener('popstate', handleUrlChange);
         };
-    }, []);
+    });
 
     // Navigation with Type Checking
     const navigate = (path: string) => {
