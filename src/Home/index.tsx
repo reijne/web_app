@@ -6,6 +6,8 @@ import { CookieConsent, DerpSmiley } from '../components';
 import { FaceLogo } from '../logos';
 
 import './Home.css';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faDoorOpen } from '@fortawesome/free-solid-svg-icons/faDoorOpen';
 
 // Lazy load the background
 const Background = React.lazy(() => import('./Background'));
@@ -65,6 +67,7 @@ function ProjectsButton({ navigate }: { navigate: (destination: string) => void 
     return (
         <div className="projects-button-container">
             <button className="projects-button" onClick={() => navigate('/projects')}>
+                <FontAwesomeIcon className="icon" icon={faDoorOpen} />
                 <code>View Projects</code>
             </button>
         </div>

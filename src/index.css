@@ -34,12 +34,6 @@ body {
     justify-content: center;
 }
 
-.icon {
-    font-size: 2rem;
-    padding-left: 1rem;
-    padding-right: 1rem;
-}
-
 .border {
     border-bottom: 1px solid black;
 }

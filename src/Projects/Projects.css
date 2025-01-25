@@ -16,6 +16,9 @@
         border-bottom: 2.5px solid var(--gray) !important;
         & .icon {
             width: 2rem !important;
+            font-size: 2rem;
+            padding-left: 1rem;
+            padding-right: 1rem;
         }
     }
 
@@ -34,7 +37,10 @@
         border-bottom: 1px solid var(--gray);
         cursor: pointer;
         & .icon {
+            font-size: 2rem;
             width: 1rem;
+            padding-left: 1rem;
+            padding-right: 1rem;
         }
     }
 

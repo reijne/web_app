@@ -13,8 +13,8 @@ export function Loading({ resource = '' }: { resource?: string }) {
 }
 
 const DERP_SMILEY = {
-    flipThreshold: 42,
-    squishThreshold: 100,
+    flipThreshold: 84,
+    squishThreshold: 200,
     wiggleDuration: 1000,
 };
 export function DerpSmiley() {
@@ -45,7 +45,7 @@ export function DerpSmiley() {
                 distanceX < DERP_SMILEY.flipThreshold && distanceY < DERP_SMILEY.flipThreshold;
 
             if (isWithinFlipDistance) {
-                setIsFlipped(prev => !prev); // Flip to other side
+                setIsFlipped((prev) => !prev); // Flip to other side
                 setIsSquished(false); // Reset squish state
                 setIsWiggling(true); // Trigger wiggle effect
                 setTimeout(() => setIsWiggling(false), DERP_SMILEY.wiggleDuration);
