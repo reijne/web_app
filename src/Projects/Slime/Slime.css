@@ -64,9 +64,22 @@
     }
 
     & .controls {
+        flex-grow: 0;
+        flex-shrink: 1;
         display: flex;
         flex-direction: row;
         justify-content: start;
+        min-height: 0;
+        border: 1px solid lightgray;
+        border-radius: 0.25rem;
+        overflow: hidden;
+
+        & .config-panel {
+            border-left: 1px solid lightgray;
+            overflow: scroll;
+            flex-wrap: nowrap;
+            margin: 0;
+        }
     }
 
     & .click-action {
