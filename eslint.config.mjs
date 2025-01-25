@@ -2,6 +2,7 @@ import tseslint from '@typescript-eslint/eslint-plugin';
 import tsParser from '@typescript-eslint/parser';
 
 import noDirectSessionStorage from './eslint-rules/no-direct-sessionstorage.mjs';
+import noEntireFontPack from './eslint-rules/no-entire-font-pack.mjs';
 
 export default [
     {
@@ -19,6 +20,7 @@ export default [
             'custom-rules': {
                 rules: {
                     'no-direct-sessionstorage': noDirectSessionStorage,
+                    'no-entire-font-pack': noEntireFontPack,
                 },
             },
         },
@@ -36,7 +38,8 @@ export default [
             '@typescript-eslint/strict-boolean-expressions': 'error',
             '@typescript-eslint/prefer-nullish-coalescing': 'warn',
             '@typescript-eslint/no-non-null-assertion': 'error',
-            'custom-rules/no-direct-sessionstorage': 'warn',
+            'custom-rules/no-direct-sessionstorage': 'error',
+            'custom-rules/no-entire-font-pack': 'error',
         },
     },
 ];

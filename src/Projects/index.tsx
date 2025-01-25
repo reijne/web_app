@@ -1,6 +1,13 @@
 import React, { Suspense, useEffect, useState } from 'react';
 
+import { faHouse } from '@fortawesome/free-solid-svg-icons/faHouse';
 import { Loading } from '../components';
+import { IconDefinition } from '@fortawesome/fontawesome-svg-core';
+import { faBorderAll } from '@fortawesome/free-solid-svg-icons/faBorderAll';
+import { faCircle } from '@fortawesome/free-solid-svg-icons/faCircle';
+import { faTableTennisPaddleBall } from '@fortawesome/free-solid-svg-icons/faTableTennisPaddleBall';
+import { faBugs } from '@fortawesome/free-solid-svg-icons/faBugs';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import './Projects.css';
 
@@ -8,7 +15,6 @@ const ColorWheel = React.lazy(() => import('./ColorWheel'));
 const GridDrawer = React.lazy(() => import('./GridDrawer'));
 const Pong = React.lazy(() => import('./Pong'));
 const Slime = React.lazy(() => import('./Slime'));
-const ThreeDemo = React.lazy(() => import('./Three/Demo'));
 
 /** Defines all the projects we have available, and points to the lazy loaded component for it. */
 const PROJECT_MAPPING = {
@@ -16,7 +22,6 @@ const PROJECT_MAPPING = {
     pong: <Pong />,
     grid: <GridDrawer />,
     slime: <Slime />,
-    demo: <ThreeDemo />,
 };
 
 export type ProjectName = keyof typeof PROJECT_MAPPING;
@@ -31,7 +36,7 @@ export const toProjectName = (name: string): ProjectName | undefined => {
 interface _BaseProject {
     name: ProjectName;
     label: string;
-    icon: string;
+    icon: IconDefinition;
 }
 
 interface PureProject extends _BaseProject {
@@ -45,14 +50,19 @@ interface ThreeProject extends _BaseProject {
 type Project = PureProject | ThreeProject;
 
 const PURE_PROJECTS: PureProject[] = [
-    { type: 'pure', name: 'colorWheel', label: 'Color Wheel', icon: '◉' },
-    { type: 'pure', name: 'pong', label: 'Locking Pong', icon: '║' },
-    { type: 'pure', name: 'grid', label: 'Grid Drawer', icon: '▦' },
-    { type: 'pure', name: 'slime', label: 'Slime Simulation', icon: '࿚' },
+    { type: 'pure', name: 'colorWheel', label: 'Color Wheel', icon: faCircle },
+    {
+        type: 'pure',
+        name: 'pong',
+        label: 'Locking Pong',
+        icon: faTableTennisPaddleBall,
+    },
+    { type: 'pure', name: 'grid', label: 'Grid Drawer', icon: faBorderAll },
 ];
 
 const THREE_PROJECTS: ThreeProject[] = [
-    { type: 'three', name: 'demo', label: 'Three Demo', icon: '③' },
+    { type: 'three', name: 'slime', label: 'Slime Simulation', icon: faBugs },
+    // { type: 'three', name: 'demo', label: 'Three Demo', icon: '③' },
 ];
 
 function Projects({
@@ -101,7 +111,7 @@ function Sidebar({ selectedProject, handleProjectSelect, navigate }: SidebarProp
             className={`sidebar-link ${selectedProject === project.name ? 'active' : ''}`}
             onClick={() => handleProjectSelect(project.name)}
         >
-            <div className="icon">{project.icon}</div>
+            <FontAwesomeIcon className="icon" icon={project.icon} />
             <h3>{project.label}</h3>
         </button>
     );
@@ -110,11 +120,12 @@ function Sidebar({ selectedProject, handleProjectSelect, navigate }: SidebarProp
         <div className="sidebar">
             {/* // TODO: determine what to navigate to for home... */}
             <div onClick={() => navigate('')} className="sidebar-link home-link">
-                <div className="icon">⌂</div> <h2>Home</h2>
+                <FontAwesomeIcon className="icon" icon={faHouse} />
+                <h2>Home</h2>
             </div>
 
-            {PURE_PROJECTS.map(project => renderSelectProjectButton(project))}
-            {THREE_PROJECTS.map(project => renderSelectProjectButton(project))}
+            {PURE_PROJECTS.map((project) => renderSelectProjectButton(project))}
+            {THREE_PROJECTS.map((project) => renderSelectProjectButton(project))}
         </div>
     );
 }

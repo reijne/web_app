@@ -14,6 +14,9 @@
     & .home-link {
         font-weight: bolder;
         border-bottom: 2.5px solid var(--gray) !important;
+        & .icon {
+            width: 2rem !important;
+        }
     }
 
     & .sidebar-link {
@@ -31,7 +34,7 @@
         border-bottom: 1px solid var(--gray);
         cursor: pointer;
         & .icon {
-            width: 3rem;
+            width: 1rem;
         }
     }
 

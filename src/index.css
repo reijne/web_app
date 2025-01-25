@@ -98,6 +98,14 @@ button.green {
     flex-direction: column;
 }
 
+.justify-content-center {
+    justify-content: center;
+}
+
+.align-items-center {
+    align-items: center;
+}
+
 .p-0 {
     padding: 0;
 }
