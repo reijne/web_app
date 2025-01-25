@@ -13,24 +13,21 @@ export default {
     create(context) {
         return {
             ImportDeclaration(node) {
-                const literal = node.source.value
+                const literal = node.source.value;
 
                 const forbiddenPackages = [
                     '@fortawesome/free-solid-svg-icons',
                     '@fortawesome/free-regular-svg-icons',
                     '@fortawesome/free-brands-svg-icons',
-                ]
-
-                console.log('\n\n\nimportSource:', literal)
-                console.log('forbiddenPackages:', forbiddenPackages)
+                ];
 
                 if (forbiddenPackages.includes(literal)) {
                     context.report({
                         node,
                         message: `Do not import the entire FontAwesome icon pack from "${literal}". Import individual icons instead, e.g. "@fortawesome/free-solid-svg-icons/faHouse".`,
-                    })
+                    });
                 }
             },
-        }
+        };
     },
-}
+};
