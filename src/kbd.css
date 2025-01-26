@@ -41,6 +41,7 @@ kbd {
 
     /* Seemed to look more key-like with more horizontal padding 🤷*/
     padding: 2px 5px;
+    margin: 0.25rem;
 
     /* These two lines pull the whole element up now that they're*/
     /* bottom-heavy due to the `box-shadow`. This looks better*/
