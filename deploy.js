@@ -25,7 +25,7 @@ function ensureNoUnstagedAndUncommittedChanges() {
         console.error('🚨 Detected the following uncommitted or unstaged changes:');
         console.log(status);
         throw new Error(
-            '❌ You have uncommitted or unstaged changes. Please commit or stash them before deploying.',
+            '❌ You have uncommitted or unstaged changes. Please commit or stash them before deploying.'
         );
     }
 }
@@ -59,11 +59,11 @@ function deploy() {
 // Create CloudFront Invalidation
 function invalidateCloudFrontDistribution() {
     console.log(
-        `🌀 Creating CloudFront invalidation for distribution: ${CLOUDFRONT_DISTRIBUTION_ID}...`,
+        `🌀 Creating CloudFront invalidation for distribution: ${CLOUDFRONT_DISTRIBUTION_ID}...`
     );
     const invalidationOutput = execSync(
         `aws cloudfront create-invalidation --distribution-id ${CLOUDFRONT_DISTRIBUTION_ID} --paths "/*"`,
-        { encoding: 'utf-8' },
+        { encoding: 'utf-8' }
     );
 
     const invalidationIdMatch = invalidationOutput.match(/"Id":\s*"([^"]+)"/);
@@ -80,7 +80,7 @@ function invalidateCloudFrontDistribution() {
     while (invalidationStatus === 'InProgress') {
         const result = execSync(
             `aws cloudfront get-invalidation --distribution-id ${CLOUDFRONT_DISTRIBUTION_ID} --id ${invalidationId}`,
-            { encoding: 'utf-8' },
+            { encoding: 'utf-8' }
         );
         invalidationStatus = JSON.parse(result).Invalidation.Status;
         console.log(`🔄 Invalidation status: ${invalidationStatus}`);

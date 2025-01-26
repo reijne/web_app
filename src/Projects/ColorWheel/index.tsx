@@ -5,7 +5,11 @@ import './ColorWheel.css';
 const SIZE_MULTIPLIER = 0.3;
 
 class RGB {
-    constructor(public r: number, public g: number, public b: number) {}
+    constructor(
+        public r: number,
+        public g: number,
+        public b: number
+    ) {}
 
     toString(): string {
         return `rgb(${this.r}, ${this.g}, ${this.b})`;
@@ -61,7 +65,11 @@ class RGB {
 }
 
 class HSL {
-    constructor(public h: number, public s: number, public l: number) {}
+    constructor(
+        public h: number,
+        public s: number,
+        public l: number
+    ) {}
 
     toString(): string {
         return `hsl(${this.h}, ${this.s}%, ${this.l}%)`;
@@ -145,7 +153,7 @@ const ColorWheel: React.FC = () => {
         const handleResize = () => {
             const size = Math.min(
                 window.innerWidth * SIZE_MULTIPLIER,
-                window.innerHeight * SIZE_MULTIPLIER,
+                window.innerHeight * SIZE_MULTIPLIER
             );
             setCanvasSize(size);
         };

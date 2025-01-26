@@ -3,10 +3,12 @@
     "version": "0.1.0",
     "private": true,
     "devDependencies": {
+        "@trivago/prettier-plugin-sort-imports": "^5.2.1",
         "@types/three": "^0.171.0",
         "@typescript-eslint/eslint-plugin": "^8.19.0",
         "@typescript-eslint/parser": "^8.19.0",
         "eslint": "^8.57.1",
+        "prettier": "^3.4.2",
         "serve": "^14.2.4",
         "ts-node": "^10.9.2"
     },

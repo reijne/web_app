@@ -46,7 +46,9 @@
     bottom: 3rem;
     left: 0;
     font-size: xx-large;
-    transition: transform 0.6s cubic-bezier(0.68, -0.55, 0.27, 1.55), left 0.6s ease,
+    transition:
+        transform 0.6s cubic-bezier(0.68, -0.55, 0.27, 1.55),
+        left 0.6s ease,
         right 0.6s ease;
     background-color: rgb(255, 192, 247);
     border-radius: 2rem;

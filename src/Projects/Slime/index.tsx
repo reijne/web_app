@@ -1,4 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
+
+import { faArrowLeft } from '@fortawesome/free-solid-svg-icons/faArrowLeft';
+import { faPause } from '@fortawesome/free-solid-svg-icons/faPause';
+import { faPlay } from '@fortawesome/free-solid-svg-icons/faPlay';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import * as THREE from 'three';
 
 import { hslToRgb } from '../../utils/colors';
@@ -51,7 +56,7 @@ const DEFAULT_SLIME_CONFIG: SlimeConfig = {
     sensorDistance: { value: 20, defaultValue: 20, min: 5, max: 40 },
     turnSpeed: { value: 0.2, defaultValue: 0.2, min: 0.05, max: 0.4 },
     jitter: { value: 2, defaultValue: 2, min: 0, max: 8 },
-    // ...SessionStorage.slimeConfig.get(), // optional: restore from session
+    ...SessionStorage.slimeConfig.get(),
 };
 
 type ClickBehaviorAction = 'pull' | 'push' | 'none';
@@ -94,18 +99,17 @@ function createParticle(width: number, height: number): SlimeParticle {
 }
 
 function clampToBounds(p: SlimeParticle, width: number, height: number) {
-    // Wrap around, just like your clampToCanvas
     if (p.x <= 0) {
-        p.x = width - 1;
+        p.x = width - 2;
     }
     if (p.x >= width - 1) {
-        p.x = 0;
+        p.x = 1;
     }
     if (p.y <= 0) {
-        p.y = height - 1;
+        p.y = height - 2;
     }
     if (p.y >= height - 1) {
-        p.y = 0;
+        p.y = 1;
     }
 }
 
@@ -552,14 +556,14 @@ const SlimeSceneThree: React.FC = () => {
                     className="primary flex-column align-items-center justify-content-center"
                     onClick={() => setIsRunning(!isRunning)}
                 >
-                    <div>{isRunning ? '⏸' : '▶'}</div>
+                    <FontAwesomeIcon icon={isRunning ? faPause : faPlay} />
                     <kbd>space</kbd>
                 </button>
                 <button
                     className="primary flex-column align-items-center justify-content-center"
                     onClick={performReset}
                 >
-                    <div>↻</div>
+                    <FontAwesomeIcon icon={faArrowLeft} />
                     <kbd>R</kbd>
                 </button>
                 <div className="click-action-wrapper">

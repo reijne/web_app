@@ -1,13 +1,14 @@
 import React, { Suspense, useEffect, useState } from 'react';
 
-import { faHouse } from '@fortawesome/free-solid-svg-icons/faHouse';
-import { Loading } from '../components';
 import { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import { faBorderAll } from '@fortawesome/free-solid-svg-icons/faBorderAll';
-import { faCircle } from '@fortawesome/free-solid-svg-icons/faCircle';
-import { faTableTennisPaddleBall } from '@fortawesome/free-solid-svg-icons/faTableTennisPaddleBall';
 import { faBugs } from '@fortawesome/free-solid-svg-icons/faBugs';
+import { faCircle } from '@fortawesome/free-solid-svg-icons/faCircle';
+import { faHouse } from '@fortawesome/free-solid-svg-icons/faHouse';
+import { faTableTennisPaddleBall } from '@fortawesome/free-solid-svg-icons/faTableTennisPaddleBall';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+
+import { Loading } from '../components';
 
 import './Projects.css';
 

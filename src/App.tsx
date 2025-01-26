@@ -1,9 +1,9 @@
 import React, { Suspense, useEffect, useState } from 'react';
 
-import { Loading } from './components';
 import Footer from './Footer';
 import Home from './Home';
-import { isProjectName, ProjectName, toProjectName } from './Projects';
+import { ProjectName, isProjectName, toProjectName } from './Projects';
+import { Loading } from './components';
 import { SessionStorage } from './utils/session';
 import { parseUrl } from './utils/url';
 
@@ -59,7 +59,7 @@ function App() {
         return () => {
             window.removeEventListener('popstate', handleUrlChange);
         };
-    });
+    }, []);
 
     // Navigation with Type Checking
     const navigate = (path: string) => {

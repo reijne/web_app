@@ -1,8 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 
-import './Background.css';
-
 import { clamp } from '../../utils/number';
+
+import './Background.css';
 
 interface Particle {
     x: number;
@@ -77,7 +77,7 @@ const Background: React.FC = () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             ctx.globalCompositeOperation = 'lighter';
-            particlesRef.current.forEach(particle => {
+            particlesRef.current.forEach((particle) => {
                 ctx.beginPath();
                 // For a square use this.
                 // ctx.rect(particle.x, particle.y, particle.radius, particle.radius);
@@ -87,7 +87,7 @@ const Background: React.FC = () => {
                 ctx.closePath();
             });
 
-            particlesRef.current.forEach(particle => {
+            particlesRef.current.forEach((particle) => {
                 particle.x = clamp(particle.x + particle.vx, -2, canvas.width + 2);
                 particle.y = clamp(particle.y + particle.vy, -2, canvas.height + 2);
 

@@ -1,4 +1,5 @@
 import { SlimeConfig, SlimeParticle } from '../Projects/Slime';
+
 import { parseUrl } from './url';
 
 /** Defines the methods to encode a value to string, and parse the string back into what we want. */
@@ -8,7 +9,10 @@ interface Coders<T> {
 }
 
 class StoredValue<T> {
-    constructor(private readonly _key: string, private readonly coders: Coders<T>) {}
+    constructor(
+        private readonly _key: string,
+        private readonly coders: Coders<T>
+    ) {}
 
     get key(): string {
         return `reijne-com-${this._key}`;
@@ -38,20 +42,20 @@ class StoredValue<T> {
 
 export const SessionStorage = {
     lastUrl: new StoredValue<URL>('lastUrl', {
-        encode: url => url.href,
+        encode: (url) => url.href,
         decode: (val: string) => parseUrl(val),
     }),
     cookies: new StoredValue<boolean>('cookies', {
-        encode: boolean => `${boolean}`,
+        encode: (boolean) => `${boolean}`,
         decode: (val: string) => val === 'true',
     }),
     slimeConfig: new StoredValue<SlimeConfig>('slimeConfig', {
-        encode: config => JSON.stringify(config),
+        encode: (config) => JSON.stringify(config),
         // TODO: Add validation of default vals, min and max.
         decode: (val: string) => JSON.parse(val),
     }),
     slimeParticles: new StoredValue<SlimeParticle[]>('slimeParticles', {
-        encode: particles => JSON.stringify(particles),
+        encode: (particles) => JSON.stringify(particles),
         // TODO: Add fun validation later.
         decode: (val: string) => JSON.parse(val),
     }),

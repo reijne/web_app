@@ -71,7 +71,7 @@ const useGridActions = () => {
 
             saveStateToUndoStack(); // Save the current state before drawing a line
 
-            setLines(prevLines => [...prevLines, newLine]); // Update state with new line
+            setLines((prevLines) => [...prevLines, newLine]); // Update state with new line
             setSelectedNodes([]); // Reset after drawing a line
         }
     };
@@ -122,7 +122,7 @@ const useGridActions = () => {
                 }
             }
         },
-        [handleUndo, handleRedo],
+        [handleUndo, handleRedo]
     );
 
     useEffect(() => {

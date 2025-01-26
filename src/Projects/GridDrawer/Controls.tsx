@@ -26,7 +26,7 @@ const Controls: React.FC<ControlsProps> = ({
                 <input
                     type="number"
                     value={gridSize}
-                    onChange={e => setGridSize(Number(e.target.value))}
+                    onChange={(e) => setGridSize(Number(e.target.value))}
                     min="5"
                     max="100"
                 />

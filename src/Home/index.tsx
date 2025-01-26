@@ -1,13 +1,13 @@
-import './Home.css';
-
 import React, { Suspense, useEffect, useState } from 'react';
+
+import { faDoorOpen } from '@fortawesome/free-solid-svg-icons/faDoorOpen';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import { CookieConsent, DerpSmiley } from '../components';
 import { FaceLogo } from '../logos';
 
 import './Home.css';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faDoorOpen } from '@fortawesome/free-solid-svg-icons/faDoorOpen';
+import './Home.css';
 
 // Lazy load the background
 const Background = React.lazy(() => import('./Background'));

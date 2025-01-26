@@ -40,18 +40,18 @@ const Pong: React.FC = () => {
     const movePaddles = (e: KeyboardEvent) => {
         if (ballX < canvasWidth / 2) {
             if (e.key === 'w') {
-                setPlayer1Y(y => Math.max(y - 10, 0));
+                setPlayer1Y((y) => Math.max(y - 10, 0));
             }
             if (e.key === 's') {
-                setPlayer1Y(y => Math.min(y + 10, canvasHeight - paddleHeight));
+                setPlayer1Y((y) => Math.min(y + 10, canvasHeight - paddleHeight));
             }
         }
         if (ballX > canvasWidth / 2) {
             if (e.key === 'ArrowUp') {
-                setPlayer2Y(y => Math.max(y - 10, 0));
+                setPlayer2Y((y) => Math.max(y - 10, 0));
             }
             if (e.key === 'ArrowDown') {
-                setPlayer2Y(y => Math.min(y + 10, canvasHeight - paddleHeight));
+                setPlayer2Y((y) => Math.min(y + 10, canvasHeight - paddleHeight));
             }
         }
     };
@@ -96,8 +96,8 @@ const Pong: React.FC = () => {
                 nextBallY >= player2Y &&
                 nextBallY <= player2Y + paddleHeight)
         ) {
-            setBallVelocityX(v => -v);
-            setBallVelocityY(v => v + (Math.random() - 0.5) * 2);
+            setBallVelocityX((v) => -v);
+            setBallVelocityY((v) => v + (Math.random() - 0.5) * 2);
 
             if (nextBallX - ballSize <= paddleWidth) {
                 nextBallX = paddleWidth + ballSize + 1;
@@ -109,12 +109,12 @@ const Pong: React.FC = () => {
         // Check if the ball has passed the left or right boundary
         if (nextBallX <= 0) {
             // Player 2 scores
-            setPlayer2Score(score => score + 1);
+            setPlayer2Score((score) => score + 1);
             resetBall();
             return;
         } else if (nextBallX >= canvasWidth) {
             // Player 1 scores
-            setPlayer1Score(score => score + 1);
+            setPlayer1Score((score) => score + 1);
             resetBall();
             return;
         }
