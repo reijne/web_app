@@ -29,6 +29,7 @@ export interface SlimeConfig {
     sensorDistance: ConfigValue;
     turnSpeed: ConfigValue;
     jitter: ConfigValue;
+    turnJitter: ConfigValue;
 }
 
 export interface SlimeParticle {
@@ -40,13 +41,15 @@ export interface SlimeParticle {
 // Default config (from your code)
 const DEFAULT_SLIME_CONFIG: SlimeConfig = {
     particleCount: {
-        value: 20000,
-        defaultValue: 20000,
+        value: 24000,
+        defaultValue: 24000,
         min: 5000,
         max: 100_000,
     },
-    trailDecay: { value: 0.99, defaultValue: 1, min: 0.9, max: 1.003 },
     moveSpeed: { value: 1.5, defaultValue: 1.5, min: 0.5, max: 3 },
+    turnSpeed: { value: 0.2, defaultValue: 0.2, min: 0.05, max: 0.4 },
+    jitter: { value: 0, defaultValue: 1, min: 0, max: 8 },
+    turnJitter: { value: 0, defaultValue: 0, min: 0, max: 1 },
     sensorAngle: {
         value: Math.PI / 4,
         defaultValue: Math.PI / 4,
@@ -54,8 +57,7 @@ const DEFAULT_SLIME_CONFIG: SlimeConfig = {
         max: Math.PI / 2,
     },
     sensorDistance: { value: 20, defaultValue: 20, min: 5, max: 40 },
-    turnSpeed: { value: 0.2, defaultValue: 0.2, min: 0.05, max: 0.4 },
-    jitter: { value: 2, defaultValue: 2, min: 0, max: 8 },
+    trailDecay: { value: 0.99, defaultValue: 1, min: 0.9, max: 1.003 },
     ...SessionStorage.slimeConfig.get(),
 };
 
@@ -363,13 +365,15 @@ const SlimeSceneThree: React.FC = () => {
                     }
                 }
 
-                // 2. Move
+                // 1. Add jitter to the angle
+                p.angle += (Math.random() - 0.5) * slime.turnJitter.value;
+                // 2. Move the particle using the updated angle
                 p.x +=
-                    Math.cos(p.angle) *
-                    (slime.moveSpeed.value + Math.random() * slime.jitter.value);
+                    Math.cos(p.angle) * slime.moveSpeed.value +
+                    (Math.random() - 0.5) * slime.jitter.value;
                 p.y +=
-                    Math.sin(p.angle) *
-                    (slime.moveSpeed.value + Math.random() * slime.jitter.value);
+                    Math.sin(p.angle) * slime.moveSpeed.value +
+                    (Math.random() - 0.5) * slime.jitter.value;
                 clampToBounds(p, sceneSize.width, sceneSize.height);
 
                 // 3. Mark trail
