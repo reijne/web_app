@@ -1,11 +1,18 @@
-import email from './email.svg';
-import faceLogo from './faceLogo.svg';
-import github from './github.svg';
-import linkedIn from './linkedIn.svg';
+import { faGithub } from '@fortawesome/free-brands-svg-icons/faGithub';
+import { faLinkedin } from '@fortawesome/free-brands-svg-icons/faLinkedin';
+import { faGrinBeam } from '@fortawesome/free-regular-svg-icons/faGrinBeam';
+import { faLaughBeam } from '@fortawesome/free-regular-svg-icons/faLaughBeam';
+import { faLaughWink } from '@fortawesome/free-regular-svg-icons/faLaughWink';
+import { faSmileBeam } from '@fortawesome/free-regular-svg-icons/faSmileBeam';
+import { faEnvelope } from '@fortawesome/free-solid-svg-icons/faEnvelope';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+
 import './logos.css';
 
 export function FaceLogo() {
-    return <img src={faceLogo} className="Face-logo" alt="logo" />;
+    const icons = [faLaughBeam, faLaughWink, faSmileBeam, faGrinBeam];
+    const icon = icons[Math.floor(Math.random() * icons.length)];
+    return <FontAwesomeIcon className="face-logo" icon={icon} />;
 }
 
 export function GithubLogo() {
@@ -14,9 +21,10 @@ export function GithubLogo() {
             href="https://github.com/reijne"
             target="_blank"
             rel="noopener noreferrer"
+            aria-label="github profile"
             className="social-link"
         >
-            <img src={github} alt="GitHub" className="social-logo" />
+            <FontAwesomeIcon className="social-logo" icon={faGithub} />
             <span>reijne</span>
         </a>
     );
@@ -30,7 +38,7 @@ export function LinkedInLogo() {
             rel="noopener noreferrer"
             className="social-link"
         >
-            <img src={linkedIn} alt="LinkedIn" className="social-logo" />
+            <FontAwesomeIcon className="social-logo" icon={faLinkedin} />
             <span>youri-reijne</span>
         </a>
     );
@@ -44,7 +52,7 @@ export function EmailLogo() {
             rel="noopener noreferrer"
             className="social-link"
         >
-            <img src={email} alt="Email" className="social-logo" />
+            <FontAwesomeIcon className="social-logo" icon={faEnvelope} />
             <span>y.reijne@gmail.com</span>
         </a>
     );

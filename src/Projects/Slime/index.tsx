@@ -1,9 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
-
 import { faArrowRotateRight } from '@fortawesome/free-solid-svg-icons/faArrowRotateRight';
 import { faPause } from '@fortawesome/free-solid-svg-icons/faPause';
 import { faPlay } from '@fortawesome/free-solid-svg-icons/faPlay';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 
 import { hslToRgb } from '../../utils/colors';
@@ -38,7 +37,6 @@ export interface SlimeParticle {
     angle: number;
 }
 
-// Default config (from your code)
 const DEFAULT_SLIME_CONFIG: SlimeConfig = {
     particleCount: {
         value: 24000,
@@ -232,7 +230,7 @@ const SlimeSceneThree: React.FC = () => {
             sceneSize.width,
             sceneSize.height,
             THREE.RGBAFormat,
-            THREE.UnsignedByteType
+            THREE.UnsignedByteType,
         );
         tex.needsUpdate = true;
 
@@ -289,7 +287,7 @@ const SlimeSceneThree: React.FC = () => {
         ) {
             // Create brand new set
             particlesRef.current = Array.from({ length: slime.particleCount.value }, () =>
-                createParticle(sceneSize.width, sceneSize.height)
+                createParticle(sceneSize.width, sceneSize.height),
             );
         }
         frameRef.current = 0;
@@ -345,7 +343,7 @@ const SlimeSceneThree: React.FC = () => {
                 return;
             }
 
-            particlesRef.current.forEach((p) => {
+            particlesRef.current.forEach(p => {
                 // 1. If clicking, repel or attract
                 if (clickBehavior !== 'none' && mouse.down) {
                     const dx = p.x - mouse.x;
@@ -389,22 +387,22 @@ const SlimeSceneThree: React.FC = () => {
             if (trailCurrent == null || sceneSize == null) {
                 return;
             }
-            particlesRef.current.forEach((p) => {
+            particlesRef.current.forEach(p => {
                 const forwardX = Math.floor(p.x + Math.cos(p.angle) * slime.sensorDistance.value);
                 const forwardY = Math.floor(p.y + Math.sin(p.angle) * slime.sensorDistance.value);
 
                 const leftX = Math.floor(
-                    p.x + Math.cos(p.angle - slime.sensorAngle.value) * slime.sensorDistance.value
+                    p.x + Math.cos(p.angle - slime.sensorAngle.value) * slime.sensorDistance.value,
                 );
                 const leftY = Math.floor(
-                    p.y + Math.sin(p.angle - slime.sensorAngle.value) * slime.sensorDistance.value
+                    p.y + Math.sin(p.angle - slime.sensorAngle.value) * slime.sensorDistance.value,
                 );
 
                 const rightX = Math.floor(
-                    p.x + Math.cos(p.angle + slime.sensorAngle.value) * slime.sensorDistance.value
+                    p.x + Math.cos(p.angle + slime.sensorAngle.value) * slime.sensorDistance.value,
                 );
                 const rightY = Math.floor(
-                    p.y + Math.sin(p.angle + slime.sensorAngle.value) * slime.sensorDistance.value
+                    p.y + Math.sin(p.angle + slime.sensorAngle.value) * slime.sensorDistance.value,
                 );
 
                 // clamp
@@ -598,10 +596,10 @@ const SlimeSceneThree: React.FC = () => {
                                 max={max}
                                 step={(max - min) / 5}
                                 value={slime[key as keyof SlimeConfig].value.toFixed(2)}
-                                onChange={(e) => {
+                                onChange={e => {
                                     const newSlime = { ...slime };
                                     newSlime[key as keyof SlimeConfig].value = parseFloat(
-                                        e.target.value
+                                        e.target.value,
                                     );
                                     setSlime(newSlime);
                                     SessionStorage.slimeConfig.set(newSlime);
