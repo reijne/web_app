@@ -15,14 +15,13 @@ import './Slime.css';
 // ==============
 interface ConfigValue {
     value: number;
-    defaultValue: number;
     min: number;
     max: number;
 }
 
 export interface SlimeConfig {
     particleCount: ConfigValue;
-    trailDecay: ConfigValue;
+    trailStrength: ConfigValue;
     moveSpeed: ConfigValue;
     sensorAngle: ConfigValue;
     sensorDistance: ConfigValue;
@@ -39,24 +38,22 @@ export interface SlimeParticle {
 
 const DEFAULT_SLIME_CONFIG: SlimeConfig = {
     particleCount: {
-        value: 24000,
-        defaultValue: 24000,
-        min: 5000,
+        value: 30_000,
+        min: 10_000,
         max: 100_000,
     },
-    moveSpeed: { value: 1.5, defaultValue: 1.5, min: 0.5, max: 3 },
-    turnSpeed: { value: 0.2, defaultValue: 0.2, min: 0.05, max: 0.4 },
-    jitter: { value: 0, defaultValue: 1, min: 0, max: 8 },
-    turnJitter: { value: 0, defaultValue: 0, min: 0, max: 1 },
+    moveSpeed: { value: 1.25, min: 0.5, max: 4 },
+    turnSpeed: { value: 0.2, min: 0.05, max: 0.5 },
+    jitter: { value: 0, min: 0, max: 8 },
+    turnJitter: { value: 0.5, min: 0, max: 1 },
     sensorAngle: {
         value: Math.PI / 4,
-        defaultValue: Math.PI / 4,
         min: Math.PI / 8,
         max: Math.PI / 2,
     },
-    sensorDistance: { value: 20, defaultValue: 20, min: 5, max: 40 },
-    trailDecay: { value: 0.99, defaultValue: 1, min: 0.9, max: 1.003 },
-    ...SessionStorage.slimeConfig.get(),
+    sensorDistance: { value: 8.5, min: 5, max: 40 },
+    trailStrength: { value: 0.99, min: 0.9, max: 0.9999999999999 },
+    // ...SessionStorage.slimeConfig.get(),
 };
 
 type ClickBehaviorAction = 'pull' | 'push' | 'none';
@@ -469,7 +466,7 @@ const SlimeSceneThree: React.FC = () => {
             if (trailRef.current) {
                 for (let y = 0; y < sceneSize.height; y++) {
                     for (let x = 0; x < sceneSize.width; x++) {
-                        trailRef.current[y][x] *= slime.trailDecay.value;
+                        trailRef.current[y][x] *= slime.trailStrength.value;
                     }
                 }
             }
@@ -594,7 +591,7 @@ const SlimeSceneThree: React.FC = () => {
                                 type="range"
                                 min={min}
                                 max={max}
-                                step={(max - min) / 5}
+                                step={(max - min) / 10}
                                 value={slime[key as keyof SlimeConfig].value.toFixed(2)}
                                 onChange={e => {
                                     const newSlime = { ...slime };
