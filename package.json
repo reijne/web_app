@@ -36,7 +36,7 @@
         "start": "react-scripts start",
         "build": "react-scripts build",
         "build-with-hash": "REACT_APP_GIT_HASH=$(git rev-parse --short HEAD) react-scripts build",
-        "deploy": "npm run build-with-hash && npx ts-node deploy.js",
+        "deploy": "npm run build-with-hash && AWS_PROFILE=reijne npx ts-node deploy.js",
         "test": "react-scripts test",
         "eject": "react-scripts eject",
         "lint": "npx eslint src",
