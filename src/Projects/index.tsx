@@ -55,7 +55,7 @@ const PURE_PROJECTS: PureProject[] = [
     {
         type: 'pure',
         name: 'pong',
-        label: 'Locking Pong',
+        label: 'Classic Pong',
         icon: faTableTennisPaddleBall,
     },
     { type: 'pure', name: 'grid', label: 'Grid Drawer', icon: faBorderAll },
