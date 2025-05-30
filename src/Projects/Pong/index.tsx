@@ -48,9 +48,11 @@ const Pong: React.FC = () => {
     const [player2Score, setPlayer2Score] = useState(0);
     const [lastFrameTime, setLastFrameTime] = useState(performance.now());
 
+    const defaultBallVelocity = 4;
+    const ballVelocityHitMultiplier = 1.1;
     const paddleHeight = 100;
     const paddleWidth = 10;
-    const paddleMovespeed = 0.01;
+    const paddleMovespeed = 10;
 
     const ballSize = 10;
     const canvasWidth = 800;
@@ -85,22 +87,22 @@ const Pong: React.FC = () => {
         }
 
         // Calculate elapsed time
-        const deltaTime = (frameTime - lastFrameTime) / 1000; // in seconds
+        const deltaTime = ((frameTime - lastFrameTime) / 1000) * 60; // in seconds
         setLastFrameTime(frameTime);
 
         // Update player positions based on move
         const { p1, p2 } = getPlayerMovement(pressedKeys.current);
 
         setPlayer1Y((y) =>
-            Math.max(Math.min(y + p1 * paddleMovespeed, canvasHeight - paddleHeight), 0)
+            Math.max(Math.min(y + p1 * paddleMovespeed * deltaTime, canvasHeight - paddleHeight), 0)
         );
         setPlayer2Y((y) =>
-            Math.max(Math.min(y + p2 * paddleMovespeed, canvasHeight - paddleHeight), 0)
+            Math.max(Math.min(y + p2 * paddleMovespeed * deltaTime, canvasHeight - paddleHeight), 0)
         );
 
         // Update ball position based on time elapsed
-        let nextBallX = ballX + ballVelocityX * deltaTime * 60; // 60 is a scaling factor for smoother speed
-        let nextBallY = ballY + ballVelocityY * deltaTime * 60;
+        let nextBallX = ballX + ballVelocityX * deltaTime;
+        let nextBallY = ballY + ballVelocityY * deltaTime;
 
         // Ball collision with top and bottom walls
         if (nextBallY <= 0 + ballSize) {
@@ -120,8 +122,8 @@ const Pong: React.FC = () => {
                 nextBallY >= player2Y &&
                 nextBallY <= player2Y + paddleHeight)
         ) {
-            setBallVelocityX((v) => -v);
-            setBallVelocityY((v) => v + (Math.random() - 0.5) * 2);
+            setBallVelocityX((v) => -v * ballVelocityHitMultiplier);
+            setBallVelocityY((v) => (v + (Math.random() - 0.5) * 2) * ballVelocityHitMultiplier);
 
             if (nextBallX - ballSize <= paddleWidth) {
                 nextBallX = paddleWidth + ballSize + 1;
@@ -177,8 +179,8 @@ const Pong: React.FC = () => {
     const resetBall = () => {
         setBallX(canvasWidth / 2);
         setBallY(canvasHeight / 2);
-        setBallVelocityX((Math.random() > 0.5 ? 1 : -1) * 4); // Reset velocity with a random direction
-        setBallVelocityY((Math.random() > 0.5 ? 1 : -1) * 4);
+        setBallVelocityX((Math.random() > 0.5 ? 1 : -1) * defaultBallVelocity); // Reset velocity with a random direction
+        setBallVelocityY((Math.random() > 0.5 ? 1 : -1) * defaultBallVelocity);
     };
 
     return (
