@@ -54,9 +54,4 @@ export const SessionStorage = {
         // TODO: Add validation of default vals, min and max.
         decode: (val: string) => JSON.parse(val),
     }),
-    slimeParticles: new StoredValue<SlimeParticle[]>('slimeParticles', {
-        encode: (particles) => JSON.stringify(particles),
-        // TODO: Add fun validation later.
-        decode: (val: string) => JSON.parse(val),
-    }),
 };

@@ -1,8 +1,9 @@
+import React, { useEffect, useRef, useState } from 'react';
+
 import { faArrowRotateRight } from '@fortawesome/free-solid-svg-icons/faArrowRotateRight';
 import { faPause } from '@fortawesome/free-solid-svg-icons/faPause';
 import { faPlay } from '@fortawesome/free-solid-svg-icons/faPlay';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 
 import { hslToRgb } from '../../utils/colors';
@@ -53,7 +54,7 @@ const DEFAULT_SLIME_CONFIG: SlimeConfig = {
     },
     sensorDistance: { value: 8.5, min: 5, max: 40 },
     trailStrength: { value: 0.99, min: 0.9, max: 0.9999999999999 },
-    // ...SessionStorage.slimeConfig.get(),
+    ...SessionStorage.slimeConfig.get(),
 };
 
 type ClickBehaviorAction = 'pull' | 'push' | 'none';
@@ -95,18 +96,19 @@ function createParticle(width: number, height: number): SlimeParticle {
     };
 }
 
-function clampToBounds(p: SlimeParticle, width: number, height: number) {
-    if (p.x <= 0) {
-        p.x = width - 2;
+function clampToBounds(particle: SlimeParticle, width: number, height: number) {
+    const offset = 10;
+    if (particle.x <= offset) {
+        particle.x = width - offset;
     }
-    if (p.x >= width - 1) {
-        p.x = 1;
+    if (particle.x > width - offset) {
+        particle.x = offset + 1;
     }
-    if (p.y <= 0) {
-        p.y = height - 2;
+    if (particle.y <= offset) {
+        particle.y = height - offset;
     }
-    if (p.y >= height - 1) {
-        p.y = 1;
+    if (particle.y >= height - offset) {
+        particle.y = offset + 1;
     }
 }
 
@@ -227,7 +229,7 @@ const SlimeSceneThree: React.FC = () => {
             sceneSize.width,
             sceneSize.height,
             THREE.RGBAFormat,
-            THREE.UnsignedByteType,
+            THREE.UnsignedByteType
         );
         tex.needsUpdate = true;
 
@@ -274,17 +276,15 @@ const SlimeSceneThree: React.FC = () => {
         if (sceneSize == null) {
             return;
         }
+
         // Re-init trail buffer
         trailRef.current = createTrailBuffer(trailRef.current, sceneSize.width, sceneSize.height);
 
         // Re-init particles
-        if (
-            !particlesRef.current.length ||
-            particlesRef.current.length !== slime.particleCount.value
-        ) {
+        if (particlesRef.current.length !== slime.particleCount.value) {
             // Create brand new set
             particlesRef.current = Array.from({ length: slime.particleCount.value }, () =>
-                createParticle(sceneSize.width, sceneSize.height),
+                createParticle(sceneSize.width, sceneSize.height)
             );
         }
         frameRef.current = 0;
@@ -340,7 +340,7 @@ const SlimeSceneThree: React.FC = () => {
                 return;
             }
 
-            particlesRef.current.forEach(p => {
+            particlesRef.current.forEach((p) => {
                 // 1. If clicking, repel or attract
                 if (clickBehavior !== 'none' && mouse.down) {
                     const dx = p.x - mouse.x;
@@ -384,22 +384,22 @@ const SlimeSceneThree: React.FC = () => {
             if (trailCurrent == null || sceneSize == null) {
                 return;
             }
-            particlesRef.current.forEach(p => {
+            particlesRef.current.forEach((p) => {
                 const forwardX = Math.floor(p.x + Math.cos(p.angle) * slime.sensorDistance.value);
                 const forwardY = Math.floor(p.y + Math.sin(p.angle) * slime.sensorDistance.value);
 
                 const leftX = Math.floor(
-                    p.x + Math.cos(p.angle - slime.sensorAngle.value) * slime.sensorDistance.value,
+                    p.x + Math.cos(p.angle - slime.sensorAngle.value) * slime.sensorDistance.value
                 );
                 const leftY = Math.floor(
-                    p.y + Math.sin(p.angle - slime.sensorAngle.value) * slime.sensorDistance.value,
+                    p.y + Math.sin(p.angle - slime.sensorAngle.value) * slime.sensorDistance.value
                 );
 
                 const rightX = Math.floor(
-                    p.x + Math.cos(p.angle + slime.sensorAngle.value) * slime.sensorDistance.value,
+                    p.x + Math.cos(p.angle + slime.sensorAngle.value) * slime.sensorDistance.value
                 );
                 const rightY = Math.floor(
-                    p.y + Math.sin(p.angle + slime.sensorAngle.value) * slime.sensorDistance.value,
+                    p.y + Math.sin(p.angle + slime.sensorAngle.value) * slime.sensorDistance.value
                 );
 
                 // clamp
@@ -498,6 +498,7 @@ const SlimeSceneThree: React.FC = () => {
 
             // 5. Next frame
             frameRef.current = (frameRef.current + COLOR_FADE_SPEED) % 360;
+
             animId = requestAnimationFrame(renderLoop);
         };
 
@@ -519,7 +520,6 @@ const SlimeSceneThree: React.FC = () => {
     // UI Handlers
     // ===============
     const performReset = () => {
-        SessionStorage.slimeParticles.del();
         trailRef.current = null;
         particlesRef.current = [];
         setReset(reset + 1);
@@ -528,13 +528,16 @@ const SlimeSceneThree: React.FC = () => {
     // Keydown for quick toggle
     useEffect(() => {
         const handleKeydown = (e: KeyboardEvent) => {
+            if (e.metaKey || e.ctrlKey || e.shiftKey) {
+                return;
+            }
+
             if (e.key === 'r') {
-                // performReset();
-                // TODO: Figure out how to actually do this, remove code clone.
-                SessionStorage.slimeParticles.del();
-                trailRef.current = null;
-                particlesRef.current = [];
-                setReset(reset + 1);
+                performReset();
+            }
+            if (e.key === 'd') {
+                SessionStorage.slimeConfig.del();
+                performReset();
             }
             if (e.key === ' ') {
                 setIsRunning(!isRunning);
@@ -593,10 +596,10 @@ const SlimeSceneThree: React.FC = () => {
                                 max={max}
                                 step={(max - min) / 10}
                                 value={slime[key as keyof SlimeConfig].value.toFixed(2)}
-                                onChange={e => {
+                                onChange={(e) => {
                                     const newSlime = { ...slime };
                                     newSlime[key as keyof SlimeConfig].value = parseFloat(
-                                        e.target.value,
+                                        e.target.value
                                     );
                                     setSlime(newSlime);
                                     SessionStorage.slimeConfig.set(newSlime);
