@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 
 import { faArrowRotateRight } from '@fortawesome/free-solid-svg-icons/faArrowRotateRight';
+import { faCompress } from '@fortawesome/free-solid-svg-icons/faCompress';
+import { faExpand } from '@fortawesome/free-solid-svg-icons/faExpand';
 import { faPause } from '@fortawesome/free-solid-svg-icons/faPause';
 import { faPlay } from '@fortawesome/free-solid-svg-icons/faPlay';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -89,10 +91,20 @@ const COLOR_FADE_SPEED = 0.5;
 // Helper functions
 // ==============
 function createParticle(width: number, height: number): SlimeParticle {
+    const cx = width / 2;
+    const cy = height / 2;
+    const maxRadius = Math.min(width, height) / 20;
+
+    // Random angle (0..2π)
+    const theta = Math.random() * Math.PI * 2;
+
+    // Random radius, corrected for uniform distribution
+    const r = Math.sqrt(Math.random()) * maxRadius;
+
     return {
-        x: width / 2 + ((Math.random() - 0.5) * width) / 20,
-        y: height / 2 + ((Math.random() - 0.5) * height) / 20,
-        angle: Math.random() * Math.PI * 2,
+        x: cx + Math.cos(theta) * r,
+        y: cy + Math.sin(theta) * r,
+        angle: theta,
     };
 }
 
@@ -152,6 +164,7 @@ const SlimeSceneThree: React.FC = () => {
     const [slime, setSlime] = useState<SlimeConfig>(DEFAULT_SLIME_CONFIG);
     const [clickBehavior, setClickBehavior] = useState<ClickBehaviorAction>('pull');
     const [isRunning, setIsRunning] = useState(true);
+    const [isFullscreen, setIsFullScreen] = useState(false);
     const [reset, setReset] = useState(0);
 
     // For rendering
@@ -181,17 +194,22 @@ const SlimeSceneThree: React.FC = () => {
     // Resize handler
     // =============
     useEffect(() => {
-        const handleResize = () => {
-            if (!containerRef.current) {
-                return;
+        const el = containerRef.current;
+        if (!el) {
+            return;
+        }
+
+        const ro = new ResizeObserver((entries) => {
+            for (const entry of entries) {
+                const { width, height } = entry.contentRect;
+                // Only set when both are positive
+                if (width > 0 && height > 0) {
+                    setSceneSize({ width: Math.floor(width), height: Math.floor(height) });
+                }
             }
-            const width = containerRef.current.clientWidth;
-            const height = containerRef.current.clientHeight;
-            setSceneSize({ width, height });
-        };
-        window.addEventListener('resize', handleResize);
-        handleResize(); // call once
-        return () => window.removeEventListener('resize', handleResize);
+        });
+        ro.observe(el);
+        return () => ro.disconnect();
     }, []);
 
     // =========================
@@ -267,7 +285,7 @@ const SlimeSceneThree: React.FC = () => {
             mat.dispose();
             tex.dispose();
         };
-    }, [reset, sceneSize, clickBehavior]);
+    }, [reset, sceneSize]);
 
     // ===============================
     // Slime "simulation" re-initialize
@@ -287,7 +305,6 @@ const SlimeSceneThree: React.FC = () => {
                 createParticle(sceneSize.width, sceneSize.height)
             );
         }
-        frameRef.current = 0;
     }, [sceneSize, slime, reset]);
 
     // ===============
@@ -313,7 +330,7 @@ const SlimeSceneThree: React.FC = () => {
             }
             const rect = containerRef.current.getBoundingClientRect();
             mouse.x = e.clientX - rect.left;
-            mouse.y = sceneSize.height - e.clientY;
+            mouse.y = rect.height - (e.clientY - rect.top);
         };
         const handleMouseDown = () => {
             mouse.down = true;
@@ -442,7 +459,7 @@ const SlimeSceneThree: React.FC = () => {
                     data[idx + 0] = r; // R
                     data[idx + 1] = g; // G
                     data[idx + 2] = b; // B
-                    data[idx + 3] = 1; // A
+                    data[idx + 3] = 255; // A
                     idx += 4;
                 }
             }
@@ -525,6 +542,24 @@ const SlimeSceneThree: React.FC = () => {
         setReset(reset + 1);
     };
 
+    useEffect(() => {
+        const onChange = () => {
+            setIsFullScreen(!!document.fullscreenElement);
+            // kick layout-dependent effects that rely on ResizeObserver
+            window.dispatchEvent(new Event('resize'));
+        };
+        document.addEventListener('fullscreenchange', onChange);
+        return () => document.removeEventListener('fullscreenchange', onChange);
+    }, []);
+
+    const toggleFullScreen = () => {
+        if (document.fullscreenElement) {
+            document.exitFullscreen?.().catch(() => {});
+        } else {
+            containerRef.current?.requestFullscreen?.().catch(() => {});
+        }
+    };
+
     // Keydown for quick toggle
     useEffect(() => {
         const handleKeydown = (e: KeyboardEvent) => {
@@ -535,9 +570,13 @@ const SlimeSceneThree: React.FC = () => {
             if (e.key === 'r') {
                 performReset();
             }
+            // TODO: Make dev only.
             if (e.key === 'd') {
                 SessionStorage.slimeConfig.del();
-                performReset();
+                window.location.reload();
+            }
+            if (e.key === 'f') {
+                toggleFullScreen();
             }
             if (e.key === ' ') {
                 setIsRunning(!isRunning);
@@ -545,12 +584,12 @@ const SlimeSceneThree: React.FC = () => {
         };
         window.addEventListener('keydown', handleKeydown);
         return () => window.removeEventListener('keydown', handleKeydown);
-    }, [reset, isRunning]);
+    }, [reset, isRunning, isFullscreen]);
 
     return (
         <div className="slime-container">
             {/* Put your Three.js container ONLY for the scene */}
-            <div className="scene" ref={containerRef} />
+            <div id={'slime-scene'} className="scene" ref={containerRef} />
 
             {/* Controls */}
             <div className="controls">
@@ -568,8 +607,15 @@ const SlimeSceneThree: React.FC = () => {
                     <FontAwesomeIcon icon={faArrowRotateRight} />
                     <kbd>R</kbd>
                 </button>
+                <button
+                    className="primary flex-column align-items-center justify-content-center"
+                    onClick={toggleFullScreen}
+                >
+                    <FontAwesomeIcon icon={isFullscreen ? faCompress : faExpand} />
+                    <kbd>F</kbd>
+                </button>
                 <div className="click-action-wrapper">
-                    Cursor:
+                    Click:
                     <button
                         className={`click-action ${clickBehavior}`}
                         onClick={() => {
