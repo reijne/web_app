@@ -14,7 +14,7 @@ interface Particle {
 
 const PARTICLES = {
     count: 100,
-    speed: 1,
+    speed: 5,
     size: {
         min: 1,
         variance: 2,
@@ -53,9 +53,9 @@ function createParticles(canvas: HTMLCanvasElement): Particle[] {
 
 const STEER = {
     force: 0.1, // how aggressively we steer toward desired velocity (0..1)
-    maxSpeed: 8, // pixels per frame when seeking
+    maxSpeed: 5, // pixels per frame when seeking
     slowRadius: 120, // start slowing when close to mouse
-    damping: 0.9999, // mild damping so velocities don't explode over time
+    damping: 0.995, // mild damping so velocities don't explode over time
 };
 
 const Background: React.FC = () => {
