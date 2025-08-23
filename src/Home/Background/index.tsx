@@ -14,7 +14,7 @@ interface Particle {
 
 const PARTICLES = {
     count: 100,
-    speed: 0.25,
+    speed: 1,
     size: {
         min: 1,
         variance: 2,
@@ -51,6 +51,13 @@ function createParticles(canvas: HTMLCanvasElement): Particle[] {
     return particles;
 }
 
+const STEER = {
+    force: 0.1, // how aggressively we steer toward desired velocity (0..1)
+    maxSpeed: 8, // pixels per frame when seeking
+    slowRadius: 120, // start slowing when close to mouse
+    damping: 0.9999, // mild damping so velocities don't explode over time
+};
+
 const Background: React.FC = () => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const particlesRef = useRef<Particle[]>([]);
@@ -61,6 +68,29 @@ const Background: React.FC = () => {
         if (!canvas || !ctx) {
             return;
         }
+
+        const mouse = {
+            x: 0,
+            y: 0,
+            down: false,
+        };
+
+        const handleMouseMove = (e: MouseEvent) => {
+            const rect = canvas.getBoundingClientRect();
+            mouse.x = e.clientX - rect.left;
+            mouse.y = e.clientY - rect.top;
+        };
+
+        const handleMouseDown = () => {
+            mouse.down = true;
+        };
+        const handleMouseUp = () => {
+            mouse.down = false;
+        };
+
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mousedown', handleMouseDown);
+        window.addEventListener('mouseup', handleMouseUp);
 
         // Resize canvas to full screen
         const resizeCanvas = () => {
@@ -85,6 +115,31 @@ const Background: React.FC = () => {
                 ctx.fillStyle = 'rgba(0, 0, 0, 1)';
                 ctx.fill();
                 ctx.closePath();
+            });
+
+            particlesRef.current.forEach((particle) => {
+                if (mouse.down) {
+                    // Vector from particle to mouse
+                    const dx = mouse.x - particle.x;
+                    const dy = mouse.y - particle.y;
+                    const dist = Math.hypot(dx, dy) || 1;
+
+                    // "Arrive": go fast when far, slower when close
+                    const speedScale = clamp(dist / STEER.slowRadius, 0, 1);
+                    const max = STEER.maxSpeed * (0.2 + 0.8 * speedScale); // don't go to zero
+
+                    // Desired velocity toward mouse
+                    const desiredVx = (dx / dist) * max;
+                    const desiredVy = (dy / dist) * max;
+
+                    // Steering = (desired - current) * force
+                    particle.vx += (desiredVx - particle.vx) * STEER.force;
+                    particle.vy += (desiredVy - particle.vy) * STEER.force;
+                }
+
+                // Mild damping always (prevents runaway speeds)
+                particle.vx *= STEER.damping;
+                particle.vy *= STEER.damping;
             });
 
             particlesRef.current.forEach((particle) => {
