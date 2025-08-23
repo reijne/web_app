@@ -2,24 +2,25 @@ import React, { Suspense, useEffect, useState } from 'react';
 
 import Footer from './Footer';
 import Home from './Home';
-import { ProjectName, isProjectName, toProjectName } from './Projects';
+import { ProjectName, toProjectName } from './Projects';
 import { Loading } from './components';
 import { SessionStorage } from './utils/session';
 import { parseUrl } from './utils/url';
 
 const Projects = React.lazy(() => import('./Projects'));
 
-/** Defines all the pages we have available for App.tsx. */
-export const PAGES = ['home', 'projects'] as const;
-export type Page = (typeof PAGES)[number];
-export const CURRENT_PAGE = 'home';
-
-interface AppState {
-    page: Page;
-    selectedProject?: ProjectName;
+interface HomeState {
+    page: 'home';
 }
 
-const defaultAppState: AppState = { page: 'home', selectedProject: 'colorWheel' };
+interface ProjectsState {
+    page: 'projects';
+    selectedProject: ProjectName;
+}
+
+type AppState = HomeState | ProjectsState;
+
+const defaultAppState: AppState = { page: 'home' };
 
 function App() {
     const [state, setState] = useState<AppState>(defaultAppState);
@@ -35,19 +36,12 @@ function App() {
         const pathParts = url.pathname.split('/').filter(Boolean);
         if (pathParts[0] === 'projects') {
             const project = pathParts[1];
-            if (isProjectName(project)) {
-                setState({
-                    page: 'projects',
-                    selectedProject: toProjectName(project),
-                });
-            } else {
-                setState({
-                    page: 'projects',
-                    selectedProject: undefined,
-                });
-            }
+            setState({
+                page: 'projects',
+                selectedProject: toProjectName(project),
+            });
         } else {
-            setState({ page: 'home', selectedProject: undefined });
+            setState({ page: 'home' });
         }
     };
 
@@ -96,10 +90,7 @@ function App() {
             case 'projects':
                 return (
                     <Suspense fallback={<Loading />}>
-                        <Projects
-                            projectFromUrl={state.selectedProject ?? 'colorWheel'}
-                            navigate={navigate}
-                        />
+                        <Projects projectFromUrl={state.selectedProject} navigate={navigate} />
                     </Suspense>
                 );
             case 'home':

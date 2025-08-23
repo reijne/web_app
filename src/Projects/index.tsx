@@ -26,10 +26,10 @@ const PROJECT_MAPPING = {
 };
 
 export type ProjectName = keyof typeof PROJECT_MAPPING;
-export const isProjectName = (name: string) => name in PROJECT_MAPPING;
-export const toProjectName = (name: string): ProjectName | undefined => {
+const isProjectName = (name: string) => name in PROJECT_MAPPING;
+export const toProjectName = (name: string): ProjectName => {
     if (!isProjectName(name)) {
-        return undefined;
+        return 'slime';
     }
     return name as ProjectName;
 };
@@ -119,7 +119,6 @@ function Sidebar({ selectedProject, handleProjectSelect, navigate }: SidebarProp
 
     return (
         <div className="sidebar">
-            {/* // TODO: determine what to navigate to for home... */}
             <div onClick={() => navigate('')} className="sidebar-link home-link">
                 <FontAwesomeIcon className="icon" icon={faHouse} />
                 <h2>Home</h2>
