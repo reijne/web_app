@@ -36,11 +36,11 @@ export function DerpSmiley() {
             const isWithinSquishDistance =
                 distanceX < DERP_SMILEY.squishThreshold && distanceY < DERP_SMILEY.squishThreshold;
 
+            setIsSquished(isWithinSquishDistance);
             if (!isWithinSquishDistance) {
                 return;
             }
 
-            setIsSquished(isWithinSquishDistance);
             const isWithinFlipDistance =
                 distanceX < DERP_SMILEY.flipThreshold && distanceY < DERP_SMILEY.flipThreshold;
 
