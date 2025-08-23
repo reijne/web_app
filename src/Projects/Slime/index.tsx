@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 
 import { faArrowRotateRight } from '@fortawesome/free-solid-svg-icons/faArrowRotateRight';
+import { faArrowsToCircle } from '@fortawesome/free-solid-svg-icons/faArrowsToCircle';
+import { faBan } from '@fortawesome/free-solid-svg-icons/faBan';
+import { faCircleXmark } from '@fortawesome/free-solid-svg-icons/faCircleXmark';
 import { faCompress } from '@fortawesome/free-solid-svg-icons/faCompress';
 import { faExpand } from '@fortawesome/free-solid-svg-icons/faExpand';
 import { faPause } from '@fortawesome/free-solid-svg-icons/faPause';
@@ -9,6 +12,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import * as THREE from 'three';
 
 import { hslToRgb } from '../../utils/colors';
+import { clamp } from '../../utils/number';
 import { SessionStorage } from '../../utils/session';
 
 import './Slime.css';
@@ -39,7 +43,7 @@ export interface SlimeParticle {
     angle: number;
 }
 
-const DEFAULT_SLIME_CONFIG: SlimeConfig = {
+let SLIME_CONFIG: SlimeConfig = {
     particleCount: {
         value: 30_000,
         min: 10_000,
@@ -59,6 +63,32 @@ const DEFAULT_SLIME_CONFIG: SlimeConfig = {
     ...SessionStorage.slimeConfig.get(),
 };
 
+// ===== Evolution for Slime Config =====
+const EVOLVE = {
+    enabled: true,
+    periodMs: 500, // how often to evolve
+    magnitude: 0.1, // fraction of (max - min) per nudge
+    fieldsPerStep: 1, // how many fields to nudge each time
+    excluded: ['particleCount'],
+};
+
+// Pick K distinct random items
+function pickK<T>(arr: T[], k: number) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a.slice(0, k);
+}
+
+// Nudge one ConfigValue by a tiny random amount
+function nudge(val: ConfigValue, mag = EVOLVE.magnitude): number {
+    const range = val.max - val.min;
+    const delta = (Math.random() * 2 - 1) * (range * mag);
+    return clamp(val.value + delta, val.min, val.max);
+}
+
 type ClickBehaviorAction = 'pull' | 'push' | 'none';
 function getNextClickBehavior(current: ClickBehaviorAction): ClickBehaviorAction {
     switch (current) {
@@ -74,9 +104,9 @@ function getNextClickBehavior(current: ClickBehaviorAction): ClickBehaviorAction
 }
 
 const CLICK_BEHAVIOR_ICONS = {
-    pull: '⌾',
-    push: '⧂',
-    none: '⍉',
+    pull: faArrowsToCircle,
+    push: faCircleXmark,
+    none: faBan,
 };
 
 // Some constants
@@ -161,7 +191,6 @@ const SlimeSceneThree: React.FC = () => {
     const containerRef = useRef<HTMLDivElement | null>(null);
 
     // Slime state
-    const [slime, setSlime] = useState<SlimeConfig>(DEFAULT_SLIME_CONFIG);
     const [clickBehavior, setClickBehavior] = useState<ClickBehaviorAction>('pull');
     const [isRunning, setIsRunning] = useState(true);
     const [isFullscreen, setIsFullScreen] = useState(false);
@@ -299,13 +328,13 @@ const SlimeSceneThree: React.FC = () => {
         trailRef.current = createTrailBuffer(trailRef.current, sceneSize.width, sceneSize.height);
 
         // Re-init particles
-        if (particlesRef.current.length !== slime.particleCount.value) {
+        if (particlesRef.current.length !== SLIME_CONFIG.particleCount.value) {
             // Create brand new set
-            particlesRef.current = Array.from({ length: slime.particleCount.value }, () =>
+            particlesRef.current = Array.from({ length: SLIME_CONFIG.particleCount.value }, () =>
                 createParticle(sceneSize.width, sceneSize.height)
             );
         }
-    }, [sceneSize, slime, reset]);
+    }, [sceneSize, reset]);
 
     // ===============
     // Animation / Loop
@@ -378,14 +407,14 @@ const SlimeSceneThree: React.FC = () => {
                 }
 
                 // 1. Add jitter to the angle
-                p.angle += (Math.random() - 0.5) * slime.turnJitter.value;
+                p.angle += (Math.random() - 0.5) * SLIME_CONFIG.turnJitter.value;
                 // 2. Move the particle using the updated angle
                 p.x +=
-                    Math.cos(p.angle) * slime.moveSpeed.value +
-                    (Math.random() - 0.5) * slime.jitter.value;
+                    Math.cos(p.angle) * SLIME_CONFIG.moveSpeed.value +
+                    (Math.random() - 0.5) * SLIME_CONFIG.jitter.value;
                 p.y +=
-                    Math.sin(p.angle) * slime.moveSpeed.value +
-                    (Math.random() - 0.5) * slime.jitter.value;
+                    Math.sin(p.angle) * SLIME_CONFIG.moveSpeed.value +
+                    (Math.random() - 0.5) * SLIME_CONFIG.jitter.value;
                 clampToBounds(p, sceneSize.width, sceneSize.height);
 
                 // 3. Mark trail
@@ -402,21 +431,33 @@ const SlimeSceneThree: React.FC = () => {
                 return;
             }
             particlesRef.current.forEach((p) => {
-                const forwardX = Math.floor(p.x + Math.cos(p.angle) * slime.sensorDistance.value);
-                const forwardY = Math.floor(p.y + Math.sin(p.angle) * slime.sensorDistance.value);
+                const forwardX = Math.floor(
+                    p.x + Math.cos(p.angle) * SLIME_CONFIG.sensorDistance.value
+                );
+                const forwardY = Math.floor(
+                    p.y + Math.sin(p.angle) * SLIME_CONFIG.sensorDistance.value
+                );
 
                 const leftX = Math.floor(
-                    p.x + Math.cos(p.angle - slime.sensorAngle.value) * slime.sensorDistance.value
+                    p.x +
+                        Math.cos(p.angle - SLIME_CONFIG.sensorAngle.value) *
+                            SLIME_CONFIG.sensorDistance.value
                 );
                 const leftY = Math.floor(
-                    p.y + Math.sin(p.angle - slime.sensorAngle.value) * slime.sensorDistance.value
+                    p.y +
+                        Math.sin(p.angle - SLIME_CONFIG.sensorAngle.value) *
+                            SLIME_CONFIG.sensorDistance.value
                 );
 
                 const rightX = Math.floor(
-                    p.x + Math.cos(p.angle + slime.sensorAngle.value) * slime.sensorDistance.value
+                    p.x +
+                        Math.cos(p.angle + SLIME_CONFIG.sensorAngle.value) *
+                            SLIME_CONFIG.sensorDistance.value
                 );
                 const rightY = Math.floor(
-                    p.y + Math.sin(p.angle + slime.sensorAngle.value) * slime.sensorDistance.value
+                    p.y +
+                        Math.sin(p.angle + SLIME_CONFIG.sensorAngle.value) *
+                            SLIME_CONFIG.sensorDistance.value
                 );
 
                 // clamp
@@ -432,9 +473,9 @@ const SlimeSceneThree: React.FC = () => {
                 const rI = trailCurrent[safeRightY][safeRightX];
 
                 if (lI > fI && lI > rI) {
-                    p.angle -= slime.turnSpeed.value;
+                    p.angle -= SLIME_CONFIG.turnSpeed.value;
                 } else if (rI > fI && rI > lI) {
-                    p.angle += slime.turnSpeed.value;
+                    p.angle += SLIME_CONFIG.turnSpeed.value;
                 }
             });
         };
@@ -483,7 +524,7 @@ const SlimeSceneThree: React.FC = () => {
             if (trailRef.current) {
                 for (let y = 0; y < sceneSize.height; y++) {
                     for (let x = 0; x < sceneSize.width; x++) {
-                        trailRef.current[y][x] *= slime.trailStrength.value;
+                        trailRef.current[y][x] *= SLIME_CONFIG.trailStrength.value;
                     }
                 }
             }
@@ -516,6 +557,12 @@ const SlimeSceneThree: React.FC = () => {
             // 5. Next frame
             frameRef.current = (frameRef.current + COLOR_FADE_SPEED) % 360;
 
+            let str = '';
+            for (const key in SLIME_CONFIG) {
+                str = `${str} | ${key} | ${SLIME_CONFIG[key as keyof SlimeConfig].value}`;
+            }
+            console.log(str);
+
             animId = requestAnimationFrame(renderLoop);
         };
 
@@ -531,7 +578,7 @@ const SlimeSceneThree: React.FC = () => {
                 cancelAnimationFrame(animId);
             }
         };
-    }, [clickBehavior, isRunning, slime, sceneSize, reset]);
+    }, [clickBehavior, isRunning, sceneSize, reset]);
 
     // ===============
     // UI Handlers
@@ -570,7 +617,7 @@ const SlimeSceneThree: React.FC = () => {
             if (e.key === 'r') {
                 performReset();
             }
-            // TODO: Make dev only.
+            // TODO: Make dev only?
             if (e.key === 'd') {
                 SessionStorage.slimeConfig.del();
                 window.location.reload();
@@ -585,6 +632,34 @@ const SlimeSceneThree: React.FC = () => {
         window.addEventListener('keydown', handleKeydown);
         return () => window.removeEventListener('keydown', handleKeydown);
     }, [reset, isRunning, isFullscreen]);
+
+    useEffect(() => {
+        if (!EVOLVE.enabled) {
+            return;
+        }
+
+        const id = window.setInterval(() => {
+            // Decide which keys to touch
+            const keys = Object.keys(SLIME_CONFIG) as (keyof SlimeConfig)[];
+            // Keep particleCount rare, and only a tiny step
+            const nonCount = keys.filter((k) => !EVOLVE.excluded.includes(k));
+            const chosen = pickK(nonCount, Math.min(EVOLVE.fieldsPerStep, nonCount.length));
+
+            const next: SlimeConfig = { ...SLIME_CONFIG };
+
+            // Nudge chosen fields
+            for (const k of chosen) {
+                const cv = next[k];
+                next[k] = { ...cv, value: nudge(cv) };
+            }
+
+            // Persist
+            SessionStorage.slimeConfig.set(next);
+            SLIME_CONFIG = next;
+        }, EVOLVE.periodMs);
+
+        return () => clearInterval(id);
+    }, []);
 
     return (
         <div className="slime-container">
@@ -615,7 +690,7 @@ const SlimeSceneThree: React.FC = () => {
                     <kbd>F</kbd>
                 </button>
                 <div className="click-action-wrapper">
-                    Click:
+                    Click
                     <button
                         className={`click-action ${clickBehavior}`}
                         onClick={() => {
@@ -627,31 +702,31 @@ const SlimeSceneThree: React.FC = () => {
                         }}
                     >
                         {clickBehavior}
-                        {CLICK_BEHAVIOR_ICONS[clickBehavior]}
+                        <FontAwesomeIcon
+                            className="icon"
+                            icon={CLICK_BEHAVIOR_ICONS[clickBehavior]}
+                        />
                     </button>
                 </div>
 
                 {/* Slime config range inputs */}
                 <div className="config-panel">
-                    {Object.entries(DEFAULT_SLIME_CONFIG).map(([key, { min, max }]) => (
+                    {Object.entries(SLIME_CONFIG).map(([key, { min, max, value }]) => (
                         <div className="labeled-input" key={key}>
                             <label>{key}</label>
                             <input
                                 type="range"
                                 min={min}
                                 max={max}
-                                step={(max - min) / 10}
-                                value={slime[key as keyof SlimeConfig].value.toFixed(2)}
+                                step={(max - min) / 100}
+                                value={value.toFixed(2)}
                                 onChange={(e) => {
-                                    const newSlime = { ...slime };
-                                    newSlime[key as keyof SlimeConfig].value = parseFloat(
-                                        e.target.value
-                                    );
-                                    setSlime(newSlime);
-                                    SessionStorage.slimeConfig.set(newSlime);
+                                    const newValue = parseFloat(e.target.value);
+                                    SLIME_CONFIG[key as keyof SlimeConfig].value = newValue;
+                                    SessionStorage.slimeConfig.set(SLIME_CONFIG);
                                 }}
                             />
-                            <small>{slime[key as keyof SlimeConfig].value.toFixed(2)}</small>
+                            <small>{SLIME_CONFIG[key as keyof SlimeConfig].value.toFixed(2)}</small>
                         </div>
                     ))}
                 </div>
