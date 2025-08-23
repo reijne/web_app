@@ -1,4 +1,4 @@
-import { SlimeConfig, SlimeParticle } from '../Projects/Slime';
+import { SlimeConfig } from '../Projects/Slime';
 
 import { parseUrl } from './url';
 

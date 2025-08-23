@@ -1,4 +1,4 @@
-import { EmailLogo, GithubLogo, LinkedInLogo } from '../logos';
+import { EmailLogo, GithubLogo, ItchLogo, LinkedInLogo } from '../logos';
 
 import './Footer.css';
 
@@ -26,6 +26,7 @@ export default function Footer() {
         <footer className="footer">
             <div className="socials">
                 <GithubLogo />
+                <ItchLogo />
                 <LinkedInLogo />
                 <EmailLogo />
             </div>

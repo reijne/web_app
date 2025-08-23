@@ -1,4 +1,5 @@
 import { faGithub } from '@fortawesome/free-brands-svg-icons/faGithub';
+import { faItchIo } from '@fortawesome/free-brands-svg-icons/faItchIo';
 import { faLinkedin } from '@fortawesome/free-brands-svg-icons/faLinkedin';
 import { faGrinBeam } from '@fortawesome/free-regular-svg-icons/faGrinBeam';
 import { faLaughBeam } from '@fortawesome/free-regular-svg-icons/faLaughBeam';
@@ -25,6 +26,21 @@ export function GithubLogo() {
             className="social-link"
         >
             <FontAwesomeIcon className="social-logo" icon={faGithub} />
+            <span>reijne</span>
+        </a>
+    );
+}
+
+export function ItchLogo() {
+    return (
+        <a
+            href="https://reijne.itch.io"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="itch.io page"
+            className="social-link"
+        >
+            <FontAwesomeIcon className="social-logo" icon={faItchIo} />
             <span>reijne</span>
         </a>
     );

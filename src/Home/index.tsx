@@ -7,7 +7,6 @@ import { CookieConsent, DerpSmiley } from '../components';
 import { FaceLogo } from '../logos';
 
 import './Home.css';
-import './Home.css';
 
 // Lazy load the background
 const Background = React.lazy(() => import('./Background'));
@@ -55,8 +54,8 @@ function HeaderText() {
             <div className="personal-description">
                 <p>Hello! I'm Youri Reijne, a software developer.</p>
                 <p>
-                    Welcome to my personal space, where you can find my contact information and some
-                    tiny in-browser projects
+                    Welcome to my personal space! Feel free to look around, click on some fun links
+                    and check out the in-browser projects
                 </p>
             </div>
         </div>
