@@ -63,7 +63,7 @@ button.secondary,
 button.red,
 button.green {
     color: white;
-    padding: 0.5rem 1rem;
+    padding: 0.25rem 0.5rem;
 }
 
 button.primary {
@@ -83,20 +83,24 @@ button.green {
     background-color: green;
 }
 
-.flex-row {
+button.gray {
+    background-color: gray;
+}
+
+.row {
     display: flex;
 }
 
-.flex-column {
+.column {
     display: flex;
     flex-direction: column;
 }
 
-.justify-content-center {
+.content-center {
     justify-content: center;
 }
 
-.align-items-center {
+.items-center {
     align-items: center;
 }
 

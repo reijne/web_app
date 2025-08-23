@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 
+import { faArrowPointer } from '@fortawesome/free-solid-svg-icons/faArrowPointer';
 import { faArrowRotateRight } from '@fortawesome/free-solid-svg-icons/faArrowRotateRight';
 import { faArrowsToCircle } from '@fortawesome/free-solid-svg-icons/faArrowsToCircle';
 import { faBan } from '@fortawesome/free-solid-svg-icons/faBan';
@@ -8,6 +9,7 @@ import { faCompress } from '@fortawesome/free-solid-svg-icons/faCompress';
 import { faExpand } from '@fortawesome/free-solid-svg-icons/faExpand';
 import { faPause } from '@fortawesome/free-solid-svg-icons/faPause';
 import { faPlay } from '@fortawesome/free-solid-svg-icons/faPlay';
+import { faVialVirus } from '@fortawesome/free-solid-svg-icons/faVialVirus';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import * as THREE from 'three';
 
@@ -24,18 +26,23 @@ interface ConfigValue {
     value: number;
     min: number;
     max: number;
+    decimals?: number;
 }
 
-export interface SlimeConfig {
-    particleCount: ConfigValue;
-    trailStrength: ConfigValue;
-    moveSpeed: ConfigValue;
-    sensorAngle: ConfigValue;
-    sensorDistance: ConfigValue;
-    turnSpeed: ConfigValue;
-    jitter: ConfigValue;
-    turnJitter: ConfigValue;
-}
+const slimeConfigKeys = [
+    'slimes',
+    'moveSpeed',
+    'turnSpeed',
+    'jitter',
+    'turnJitter',
+    'sensorAngle',
+    'sensorDistance',
+    'trail',
+] as const;
+
+type SlimeConfigKey = (typeof slimeConfigKeys)[number];
+
+export type SlimeConfig = Record<SlimeConfigKey, ConfigValue>;
 
 export interface SlimeParticle {
     x: number;
@@ -43,11 +50,12 @@ export interface SlimeParticle {
     angle: number;
 }
 
-let SLIME_CONFIG: SlimeConfig = {
-    particleCount: {
-        value: 30_000,
-        min: 10_000,
-        max: 100_000,
+const DEFAULT_SLIME_CONFIG: SlimeConfig = {
+    slimes: {
+        value: 25_000,
+        min: 1_000,
+        max: 50_000,
+        decimals: 0,
     },
     moveSpeed: { value: 1.25, min: 0.5, max: 4 },
     turnSpeed: { value: 0.2, min: 0.05, max: 0.5 },
@@ -59,17 +67,16 @@ let SLIME_CONFIG: SlimeConfig = {
         max: Math.PI / 2,
     },
     sensorDistance: { value: 8.5, min: 5, max: 40 },
-    trailStrength: { value: 0.99, min: 0.9, max: 0.9999999999999 },
+    trail: { value: 0.99, min: 0.9, max: 0.99, decimals: 3 },
     ...SessionStorage.slimeConfig.get(),
 };
 
 // ===== Evolution for Slime Config =====
 const EVOLVE = {
-    enabled: true,
-    periodMs: 500, // how often to evolve
-    magnitude: 0.1, // fraction of (max - min) per nudge
+    periodMs: 5000, // how often to evolve
+    magnitude: 0.25, // fraction of (max - min) per nudge
     fieldsPerStep: 1, // how many fields to nudge each time
-    excluded: ['particleCount'],
+    excluded: ['slimes'],
 };
 
 // Pick K distinct random items
@@ -85,7 +92,16 @@ function pickK<T>(arr: T[], k: number) {
 // Nudge one ConfigValue by a tiny random amount
 function nudge(val: ConfigValue, mag = EVOLVE.magnitude): number {
     const range = val.max - val.min;
-    const delta = (Math.random() * 2 - 1) * (range * mag);
+
+    // Original, taking random steps each time, scaled with magnitude.
+    // const delta = (Math.random() * 2 - 1) * (range * mag);
+
+    // Either take a positive or negative step
+    let delta = range * mag;
+    if (Math.random() < 0.5) {
+        delta *= -1;
+    }
+
     return clamp(val.value + delta, val.min, val.max);
 }
 
@@ -191,9 +207,13 @@ const SlimeSceneThree: React.FC = () => {
     const containerRef = useRef<HTMLDivElement | null>(null);
 
     // Slime state
+    const slime = useRef<SlimeConfig>({ ...DEFAULT_SLIME_CONFIG });
+    // Slime state copy, used to update input sliders reactively.
+    // eslint-disable-next-line
+    const [slimeUI, setSlimeUI] = useState<SlimeConfig>(slime.current);
     const [clickBehavior, setClickBehavior] = useState<ClickBehaviorAction>('pull');
     const [isRunning, setIsRunning] = useState(true);
-    const [isFullscreen, setIsFullScreen] = useState(false);
+    const [isEvolving, setIsEvolving] = useState(true);
     const [reset, setReset] = useState(0);
 
     // For rendering
@@ -219,10 +239,9 @@ const SlimeSceneThree: React.FC = () => {
     // We'll store the texture that we draw onto a plane
     const textureRef = useRef<THREE.DataTexture | null>(null);
 
-    // =============
-    // Resize handler
-    // =============
-    useEffect(() => {
+    const isFullscreen = () => document.fullscreenElement != null;
+
+    useEffect(function resizeHandler() {
         const el = containerRef.current;
         if (!el) {
             return;
@@ -241,344 +260,361 @@ const SlimeSceneThree: React.FC = () => {
         return () => ro.disconnect();
     }, []);
 
-    // =========================
-    // Initialize Three.js scene
-    // =========================
-    useEffect(() => {
-        if (containerRef.current == null || sceneSize == null) {
-            return;
-        }
-
-        // Create Renderer
-        const renderer = new THREE.WebGLRenderer({ antialias: false });
-        renderer.setSize(sceneSize.width, sceneSize.height);
-        containerRef.current.appendChild(renderer.domElement);
-
-        // Create Scene + Ortho Camera for a 2D-like approach
-        const scene = new THREE.Scene();
-        // OrthographicCamera "fills" the region from (0,0) to (width,height)
-        // if we set left=0, right=width, etc. We'll just invert y for convenience.
-        const camera = new THREE.OrthographicCamera(0, sceneSize.width, sceneSize.height, 0, -1, 1);
-        camera.position.set(0, 0, 1);
-        camera.lookAt(0, 0, 0);
-
-        // Create a plane that matches the width/height in "virtual pixels"
-        const geometry = new THREE.PlaneGeometry(sceneSize.width, sceneSize.height);
-        // We'll shift it so that plane's center is at (width/2, height/2)
-        geometry.translate(sceneSize.width / 2, sceneSize.height / 2, 0);
-
-        // For the texture, we create a placeholder DataTexture, size = width×height
-        // RGBA, each pixel 4 bytes
-        const size = sceneSize.width * sceneSize.height;
-        const data = new Uint8Array(size * 4); // fill with 0
-        const tex = new THREE.DataTexture(
-            data,
-            sceneSize.width,
-            sceneSize.height,
-            THREE.RGBAFormat,
-            THREE.UnsignedByteType
-        );
-        tex.needsUpdate = true;
-
-        const mat = new THREE.MeshBasicMaterial({ map: tex });
-        const mesh = new THREE.Mesh(geometry, mat);
-        scene.add(mesh);
-
-        const circleGeo = new THREE.CircleGeometry(1, 32); // radius=1, 32 segments
-        const circleMat = new THREE.MeshBasicMaterial({
-            color: getCircleColor(clickBehavior),
-            transparent: true,
-
-            opacity: 0.2, // slightly see-through
-        });
-        const circleMesh = new THREE.Mesh(circleGeo, circleMat);
-        circleMesh.visible = false; // start hidden
-        scene.add(circleMesh);
-
-        // Store references
-        rendererRef.current = renderer;
-        sceneRef.current = scene;
-        cameraRef.current = camera;
-        textureRef.current = tex;
-        circleRef.current = circleMesh;
-
-        // Cleanup
-        return () => {
-            // remove old canvas
-            if (renderer != null) {
-                renderer.dispose();
-                renderer.domElement.remove();
-            }
-            scene.remove(mesh);
-            geometry.dispose();
-            mat.dispose();
-            tex.dispose();
-        };
-    }, [reset, sceneSize]);
-
-    // ===============================
-    // Slime "simulation" re-initialize
-    // ===============================
-    useEffect(() => {
-        if (sceneSize == null) {
-            return;
-        }
-
-        // Re-init trail buffer
-        trailRef.current = createTrailBuffer(trailRef.current, sceneSize.width, sceneSize.height);
-
-        // Re-init particles
-        if (particlesRef.current.length !== SLIME_CONFIG.particleCount.value) {
-            // Create brand new set
-            particlesRef.current = Array.from({ length: SLIME_CONFIG.particleCount.value }, () =>
-                createParticle(sceneSize.width, sceneSize.height)
-            );
-        }
-    }, [sceneSize, reset]);
-
-    // ===============
-    // Animation / Loop
-    // ===============
-    useEffect(() => {
-        if (sceneSize == null) {
-            return;
-        }
-        let animId: number;
-
-        const mouse = {
-            x: 0,
-            y: 0,
-            down: false,
-            size: REPULSION.minRadiusPercent,
-        };
-
-        // Mouse events on the DOM element
-        const handleMouseMove = (e: MouseEvent) => {
-            if (!containerRef.current) {
+    useEffect(
+        function initThreeJsScene() {
+            if (containerRef.current == null || sceneSize == null) {
                 return;
             }
-            const rect = containerRef.current.getBoundingClientRect();
-            mouse.x = e.clientX - rect.left;
-            mouse.y = rect.height - (e.clientY - rect.top);
-        };
-        const handleMouseDown = () => {
-            mouse.down = true;
-        };
-        const handleMouseUp = () => {
-            mouse.down = false;
-        };
 
-        window.addEventListener('mousemove', handleMouseMove);
-        window.addEventListener('mousedown', handleMouseDown);
-        window.addEventListener('mouseup', handleMouseUp);
+            // Create Renderer
+            const renderer = new THREE.WebGLRenderer({ antialias: false });
+            renderer.setSize(sceneSize.width, sceneSize.height);
+            containerRef.current.appendChild(renderer.domElement);
 
-        // ==============
-        // Slime Updaters
-        // ==============
-        const updateSlimes = (mouse: { x: number; y: number; down: boolean; size: number }) => {
+            // Create Scene + Ortho Camera for a 2D-like approach
+            const scene = new THREE.Scene();
+            // OrthographicCamera "fills" the region from (0,0) to (width,height)
+            // if we set left=0, right=width, etc. We'll just invert y for convenience.
+            const camera = new THREE.OrthographicCamera(
+                0,
+                sceneSize.width,
+                sceneSize.height,
+                0,
+                -1,
+                1
+            );
+            camera.position.set(0, 0, 1);
+            camera.lookAt(0, 0, 0);
+
+            // Create a plane that matches the width/height in "virtual pixels"
+            const geometry = new THREE.PlaneGeometry(sceneSize.width, sceneSize.height);
+            // We'll shift it so that plane's center is at (width/2, height/2)
+            geometry.translate(sceneSize.width / 2, sceneSize.height / 2, 0);
+
+            // For the texture, we create a placeholder DataTexture, size = width×height
+            // RGBA, each pixel 4 bytes
+            const size = sceneSize.width * sceneSize.height;
+            const data = new Uint8Array(size * 4); // fill with 0
+            const tex = new THREE.DataTexture(
+                data,
+                sceneSize.width,
+                sceneSize.height,
+                THREE.RGBAFormat,
+                THREE.UnsignedByteType
+            );
+            tex.needsUpdate = true;
+
+            const mat = new THREE.MeshBasicMaterial({ map: tex });
+            const mesh = new THREE.Mesh(geometry, mat);
+            scene.add(mesh);
+
+            const circleGeo = new THREE.CircleGeometry(1, 32); // radius=1, 32 segments
+            const circleMat = new THREE.MeshBasicMaterial({
+                color: getCircleColor(clickBehavior),
+                transparent: true,
+
+                opacity: 0.2, // slightly see-through
+            });
+            const circleMesh = new THREE.Mesh(circleGeo, circleMat);
+            circleMesh.visible = false; // start hidden
+            scene.add(circleMesh);
+
+            // Store references
+            rendererRef.current = renderer;
+            sceneRef.current = scene;
+            cameraRef.current = camera;
+            textureRef.current = tex;
+            circleRef.current = circleMesh;
+
+            // Cleanup
+            return () => {
+                // remove old canvas
+                if (renderer != null) {
+                    renderer.dispose();
+                    renderer.domElement.remove();
+                }
+                scene.remove(mesh);
+                geometry.dispose();
+                mat.dispose();
+                tex.dispose();
+            };
+        },
+        [reset, sceneSize]
+    );
+
+    useEffect(
+        function createSlimeTrailAndParticles() {
             if (sceneSize == null) {
                 return;
             }
-            const screenSize = Math.min(sceneSize.width, sceneSize.height);
-            const particlesCurrent = particlesRef.current;
-            const trailCurrent = trailRef.current;
-            if (particlesCurrent == null || trailCurrent == null) {
-                return;
+
+            // Re-init trail buffer
+            if (
+                trailRef.current == null ||
+                trailRef.current.length !== sceneSize.height ||
+                trailRef.current[0].length !== sceneSize.width
+            ) {
+                trailRef.current = createTrailBuffer(
+                    trailRef.current,
+                    sceneSize.width,
+                    sceneSize.height
+                );
             }
 
-            particlesRef.current.forEach((p) => {
-                // 1. If clicking, repel or attract
-                if (clickBehavior !== 'none' && mouse.down) {
-                    const dx = p.x - mouse.x;
-                    const dy = p.y - mouse.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    if (dist < mouse.size * screenSize) {
-                        if (clickBehavior === 'push') {
-                            p.angle = Math.atan2(dy, dx);
+            // Re-init particles
+            if (particlesRef.current.length !== slime.current.slimes.value) {
+                // Create brand new set
+                particlesRef.current = Array.from({ length: slime.current.slimes.value }, () =>
+                    createParticle(sceneSize.width, sceneSize.height)
+                );
+            }
+        },
+        [sceneSize, slime.current.slimes.value, reset]
+    );
+
+    useEffect(
+        function update() {
+            if (sceneSize == null) {
+                return;
+            }
+            let animId: number;
+
+            const mouse = {
+                x: 0,
+                y: 0,
+                down: false,
+                size: REPULSION.minRadiusPercent,
+            };
+
+            // Mouse events on the DOM element
+            const handleMouseMove = (e: MouseEvent) => {
+                if (!containerRef.current) {
+                    return;
+                }
+                const rect = containerRef.current.getBoundingClientRect();
+                mouse.x = e.clientX - rect.left;
+                mouse.y = rect.height - (e.clientY - rect.top);
+            };
+            const handleMouseDown = () => {
+                mouse.down =
+                    true &&
+                    mouse.x > 0 &&
+                    mouse.y > 0 &&
+                    mouse.x < sceneSize.width &&
+                    mouse.y < sceneSize.height;
+            };
+            const handleMouseUp = () => {
+                mouse.down = false;
+            };
+
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mousedown', handleMouseDown);
+            window.addEventListener('mouseup', handleMouseUp);
+
+            // ==============
+            // Slime Updaters
+            // ==============
+            const updateSlimes = (mouse: { x: number; y: number; down: boolean; size: number }) => {
+                if (sceneSize == null) {
+                    return;
+                }
+                const screenSize = Math.min(sceneSize.width, sceneSize.height);
+                const particlesCurrent = particlesRef.current;
+                const trailCurrent = trailRef.current;
+                if (particlesCurrent == null || trailCurrent == null) {
+                    return;
+                }
+
+                particlesRef.current.forEach((p) => {
+                    // 1. If clicking, repel or attract
+                    if (clickBehavior !== 'none' && mouse.down) {
+                        const dx = p.x - mouse.x;
+                        const dy = p.y - mouse.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < mouse.size * screenSize) {
+                            if (clickBehavior === 'push') {
+                                p.angle = Math.atan2(dy, dx);
+                            }
+                            if (clickBehavior === 'pull') {
+                                p.angle = Math.atan2(dy, dx) + Math.PI;
+                            }
                         }
-                        if (clickBehavior === 'pull') {
-                            p.angle = Math.atan2(dy, dx) + Math.PI;
+                        // Expand bubble
+                        if (mouse.size < REPULSION.maxRadiusPercent) {
+                            mouse.size += REPULSION.growPercentPerTick;
                         }
                     }
-                    // Expand bubble
-                    if (mouse.size < REPULSION.maxRadiusPercent) {
-                        mouse.size += REPULSION.growPercentPerTick;
+
+                    // 1. Add jitter to the angle
+                    p.angle += (Math.random() - 0.5) * slime.current.turnJitter.value;
+                    // 2. Move the particle using the updated angle
+                    p.x +=
+                        Math.cos(p.angle) * slime.current.moveSpeed.value +
+                        (Math.random() - 0.5) * slime.current.jitter.value;
+                    p.y +=
+                        Math.sin(p.angle) * slime.current.moveSpeed.value +
+                        (Math.random() - 0.5) * slime.current.jitter.value;
+                    clampToBounds(p, sceneSize.width, sceneSize.height);
+
+                    // 3. Mark trail
+                    trailCurrent[Math.floor(p.y)][Math.floor(p.x)] = 1;
+                });
+
+                // 4. "Sensor" logic to follow trails (optional)
+                simulateTrailFollowing();
+            };
+
+            const simulateTrailFollowing = () => {
+                const trailCurrent = trailRef.current;
+                if (trailCurrent == null || sceneSize == null) {
+                    return;
+                }
+                particlesRef.current.forEach((p) => {
+                    const forwardX = Math.floor(
+                        p.x + Math.cos(p.angle) * slime.current.sensorDistance.value
+                    );
+                    const forwardY = Math.floor(
+                        p.y + Math.sin(p.angle) * slime.current.sensorDistance.value
+                    );
+
+                    const leftX = Math.floor(
+                        p.x +
+                            Math.cos(p.angle - slime.current.sensorAngle.value) *
+                                slime.current.sensorDistance.value
+                    );
+                    const leftY = Math.floor(
+                        p.y +
+                            Math.sin(p.angle - slime.current.sensorAngle.value) *
+                                slime.current.sensorDistance.value
+                    );
+
+                    const rightX = Math.floor(
+                        p.x +
+                            Math.cos(p.angle + slime.current.sensorAngle.value) *
+                                slime.current.sensorDistance.value
+                    );
+                    const rightY = Math.floor(
+                        p.y +
+                            Math.sin(p.angle + slime.current.sensorAngle.value) *
+                                slime.current.sensorDistance.value
+                    );
+
+                    // clamp
+                    const safeForwardX = Math.max(0, Math.min(sceneSize.width - 1, forwardX));
+                    const safeForwardY = Math.max(0, Math.min(sceneSize.height - 1, forwardY));
+                    const safeLeftX = Math.max(0, Math.min(sceneSize.width - 1, leftX));
+                    const safeLeftY = Math.max(0, Math.min(sceneSize.height - 1, leftY));
+                    const safeRightX = Math.max(0, Math.min(sceneSize.width - 1, rightX));
+                    const safeRightY = Math.max(0, Math.min(sceneSize.height - 1, rightY));
+
+                    const fI = trailCurrent[safeForwardY][safeForwardX];
+                    const lI = trailCurrent[safeLeftY][safeLeftX];
+                    const rI = trailCurrent[safeRightY][safeRightX];
+
+                    if (lI > fI && lI > rI) {
+                        p.angle -= slime.current.turnSpeed.value;
+                    } else if (rI > fI && rI > lI) {
+                        p.angle += slime.current.turnSpeed.value;
                     }
+                });
+            };
+
+            // =======================
+            // Convert trails → texture
+            // =======================
+            const updateTextureFromTrail = () => {
+                if (textureRef.current == null || trailRef.current == null || sceneSize == null) {
+                    return;
                 }
 
-                // 1. Add jitter to the angle
-                p.angle += (Math.random() - 0.5) * SLIME_CONFIG.turnJitter.value;
-                // 2. Move the particle using the updated angle
-                p.x +=
-                    Math.cos(p.angle) * SLIME_CONFIG.moveSpeed.value +
-                    (Math.random() - 0.5) * SLIME_CONFIG.jitter.value;
-                p.y +=
-                    Math.sin(p.angle) * SLIME_CONFIG.moveSpeed.value +
-                    (Math.random() - 0.5) * SLIME_CONFIG.jitter.value;
-                clampToBounds(p, sceneSize.width, sceneSize.height);
+                const data = textureRef.current.image.data as Uint8Array;
+                // frameRef is used for rainbow hue offset
+                const hueOffset = frameRef.current;
 
-                // 3. Mark trail
-                trailCurrent[Math.floor(p.y)][Math.floor(p.x)] = 1;
-            });
-
-            // 4. "Sensor" logic to follow trails (optional)
-            simulateTrailFollowing();
-        };
-
-        const simulateTrailFollowing = () => {
-            const trailCurrent = trailRef.current;
-            if (trailCurrent == null || sceneSize == null) {
-                return;
-            }
-            particlesRef.current.forEach((p) => {
-                const forwardX = Math.floor(
-                    p.x + Math.cos(p.angle) * SLIME_CONFIG.sensorDistance.value
-                );
-                const forwardY = Math.floor(
-                    p.y + Math.sin(p.angle) * SLIME_CONFIG.sensorDistance.value
-                );
-
-                const leftX = Math.floor(
-                    p.x +
-                        Math.cos(p.angle - SLIME_CONFIG.sensorAngle.value) *
-                            SLIME_CONFIG.sensorDistance.value
-                );
-                const leftY = Math.floor(
-                    p.y +
-                        Math.sin(p.angle - SLIME_CONFIG.sensorAngle.value) *
-                            SLIME_CONFIG.sensorDistance.value
-                );
-
-                const rightX = Math.floor(
-                    p.x +
-                        Math.cos(p.angle + SLIME_CONFIG.sensorAngle.value) *
-                            SLIME_CONFIG.sensorDistance.value
-                );
-                const rightY = Math.floor(
-                    p.y +
-                        Math.sin(p.angle + SLIME_CONFIG.sensorAngle.value) *
-                            SLIME_CONFIG.sensorDistance.value
-                );
-
-                // clamp
-                const safeForwardX = Math.max(0, Math.min(sceneSize.width - 1, forwardX));
-                const safeForwardY = Math.max(0, Math.min(sceneSize.height - 1, forwardY));
-                const safeLeftX = Math.max(0, Math.min(sceneSize.width - 1, leftX));
-                const safeLeftY = Math.max(0, Math.min(sceneSize.height - 1, leftY));
-                const safeRightX = Math.max(0, Math.min(sceneSize.width - 1, rightX));
-                const safeRightY = Math.max(0, Math.min(sceneSize.height - 1, rightY));
-
-                const fI = trailCurrent[safeForwardY][safeForwardX];
-                const lI = trailCurrent[safeLeftY][safeLeftX];
-                const rI = trailCurrent[safeRightY][safeRightX];
-
-                if (lI > fI && lI > rI) {
-                    p.angle -= SLIME_CONFIG.turnSpeed.value;
-                } else if (rI > fI && rI > lI) {
-                    p.angle += SLIME_CONFIG.turnSpeed.value;
-                }
-            });
-        };
-
-        // =======================
-        // Convert trails → texture
-        // =======================
-        const updateTextureFromTrail = () => {
-            if (textureRef.current == null || trailRef.current == null || sceneSize == null) {
-                return;
-            }
-
-            const data = textureRef.current.image.data as Uint8Array;
-            // frameRef is used for rainbow hue offset
-            const hueOffset = frameRef.current;
-
-            let idx = 0;
-            for (let y = 0; y < sceneSize.height; y++) {
-                for (let x = 0; x < sceneSize.width; x++) {
-                    const intensity = trailRef.current[y][x];
-                    const [r, g, b] = hslToRgb((hueOffset % 360) / 360, 1.0, intensity);
-                    data[idx + 0] = r; // R
-                    data[idx + 1] = g; // G
-                    data[idx + 2] = b; // B
-                    data[idx + 3] = 255; // A
-                    idx += 4;
-                }
-            }
-            textureRef.current.needsUpdate = true;
-        };
-
-        const renderLoop = () => {
-            if (!rendererRef.current || !sceneRef.current || !cameraRef.current) {
-                animId = requestAnimationFrame(renderLoop);
-                return;
-            }
-
-            if (!isRunning) {
-                // If paused, just re-render the existing frame
-                rendererRef.current.render(sceneRef.current, cameraRef.current);
-                animId = requestAnimationFrame(renderLoop);
-                return;
-            }
-
-            // 1. Decay the existing trails
-            if (trailRef.current) {
+                let idx = 0;
                 for (let y = 0; y < sceneSize.height; y++) {
                     for (let x = 0; x < sceneSize.width; x++) {
-                        trailRef.current[y][x] *= SLIME_CONFIG.trailStrength.value;
+                        const intensity = trailRef.current[y][x];
+                        const [r, g, b] = hslToRgb((hueOffset % 360) / 360, 1.0, intensity);
+                        data[idx + 0] = r; // R
+                        data[idx + 1] = g; // G
+                        data[idx + 2] = b; // B
+                        data[idx + 3] = 255; // A
+                        idx += 4;
                     }
                 }
-            }
+                textureRef.current.needsUpdate = true;
+            };
 
-            // 2.5: Update the circle visuals
-            if (circleRef.current) {
-                if (mouse.down && clickBehavior !== 'none') {
-                    circleRef.current.visible = true;
-                    // Position the circle in your 2D scene
-                    circleRef.current.position.set(mouse.x, mouse.y, 0);
-
-                    // Scale the mesh by the bubble radius.
-                    // (CircleGeometry has radius=1 by default, so we scale).
-                    const bubbleRadius = mouse.size * Math.min(sceneSize.width, sceneSize.height);
-                    circleRef.current.scale.set(bubbleRadius, bubbleRadius, 1);
-                } else {
-                    circleRef.current.visible = false;
+            const renderLoop = () => {
+                if (!rendererRef.current || !sceneRef.current || !cameraRef.current) {
+                    animId = requestAnimationFrame(renderLoop);
+                    return;
                 }
-            }
 
-            // 2. Move the slimes
-            updateSlimes(mouse);
+                if (!isRunning) {
+                    // If paused, just re-render the existing frame
+                    rendererRef.current.render(sceneRef.current, cameraRef.current);
+                    animId = requestAnimationFrame(renderLoop);
+                    return;
+                }
 
-            // 3. Convert the numeric "trail buffer" to a texture image
-            updateTextureFromTrail();
+                // 1. Decay the existing trails
+                if (trailRef.current) {
+                    for (let y = 0; y < sceneSize.height; y++) {
+                        for (let x = 0; x < sceneSize.width; x++) {
+                            trailRef.current[y][x] *= slime.current.trail.value;
+                        }
+                    }
+                }
 
-            // 4. Render
-            rendererRef.current.render(sceneRef.current, cameraRef.current);
+                // 2.5: Update the circle visuals
+                if (circleRef.current) {
+                    if (mouse.down && clickBehavior !== 'none') {
+                        circleRef.current.visible = true;
+                        // Position the circle in your 2D scene
+                        circleRef.current.position.set(mouse.x, mouse.y, 0);
 
-            // 5. Next frame
-            frameRef.current = (frameRef.current + COLOR_FADE_SPEED) % 360;
+                        // Scale the mesh by the bubble radius.
+                        // (CircleGeometry has radius=1 by default, so we scale).
+                        const bubbleRadius =
+                            mouse.size * Math.min(sceneSize.width, sceneSize.height);
+                        circleRef.current.scale.set(bubbleRadius, bubbleRadius, 1);
+                    } else {
+                        circleRef.current.visible = false;
+                    }
+                }
 
-            let str = '';
-            for (const key in SLIME_CONFIG) {
-                str = `${str} | ${key} | ${SLIME_CONFIG[key as keyof SlimeConfig].value}`;
-            }
-            console.log(str);
+                // 2. Move the slimes
+                updateSlimes(mouse);
 
-            animId = requestAnimationFrame(renderLoop);
-        };
+                // 3. Convert the numeric "trail buffer" to a texture image
+                updateTextureFromTrail();
 
-        // Start
-        renderLoop();
+                // 4. Render
+                rendererRef.current.render(sceneRef.current, cameraRef.current);
 
-        // Cleanup
-        return () => {
-            window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('mousedown', handleMouseDown);
-            window.removeEventListener('mouseup', handleMouseUp);
-            if (animId) {
-                cancelAnimationFrame(animId);
-            }
-        };
-    }, [clickBehavior, isRunning, sceneSize, reset]);
+                // 5. Next frame
+                frameRef.current = (frameRef.current + COLOR_FADE_SPEED) % 360;
+
+                animId = requestAnimationFrame(renderLoop);
+            };
+
+            // Start
+            renderLoop();
+
+            // Cleanup
+            return () => {
+                window.removeEventListener('mousemove', handleMouseMove);
+                window.removeEventListener('mousedown', handleMouseDown);
+                window.removeEventListener('mouseup', handleMouseUp);
+                if (animId) {
+                    cancelAnimationFrame(animId);
+                }
+            };
+        },
+        [clickBehavior, isRunning, sceneSize, reset]
+    );
 
     // ===============
     // UI Handlers
@@ -591,8 +627,6 @@ const SlimeSceneThree: React.FC = () => {
 
     useEffect(() => {
         const onChange = () => {
-            setIsFullScreen(!!document.fullscreenElement);
-            // kick layout-dependent effects that rely on ResizeObserver
             window.dispatchEvent(new Event('resize'));
         };
         document.addEventListener('fullscreenchange', onChange);
@@ -600,7 +634,7 @@ const SlimeSceneThree: React.FC = () => {
     }, []);
 
     const toggleFullScreen = () => {
-        if (document.fullscreenElement) {
+        if (isFullscreen()) {
             document.exitFullscreen?.().catch(() => {});
         } else {
             containerRef.current?.requestFullscreen?.().catch(() => {});
@@ -625,7 +659,7 @@ const SlimeSceneThree: React.FC = () => {
             if (e.key === 'f') {
                 toggleFullScreen();
             }
-            if (e.key === ' ') {
+            if (e.key === ' ' || e.key === 'Spacebar') {
                 setIsRunning(!isRunning);
             }
         };
@@ -634,63 +668,86 @@ const SlimeSceneThree: React.FC = () => {
     }, [reset, isRunning, isFullscreen]);
 
     useEffect(() => {
-        if (!EVOLVE.enabled) {
+        if (!isEvolving) {
             return;
         }
 
         const id = window.setInterval(() => {
-            // Decide which keys to touch
-            const keys = Object.keys(SLIME_CONFIG) as (keyof SlimeConfig)[];
-            // Keep particleCount rare, and only a tiny step
-            const nonCount = keys.filter((k) => !EVOLVE.excluded.includes(k));
+            const nonCount = slimeConfigKeys.filter((k) => !EVOLVE.excluded.includes(k));
             const chosen = pickK(nonCount, Math.min(EVOLVE.fieldsPerStep, nonCount.length));
-
-            const next: SlimeConfig = { ...SLIME_CONFIG };
 
             // Nudge chosen fields
             for (const k of chosen) {
-                const cv = next[k];
-                next[k] = { ...cv, value: nudge(cv) };
+                const currentValue = slime.current[k];
+                slime.current[k] = { ...currentValue, value: nudge(currentValue) };
+                setSlimeUI({ ...slime.current });
             }
-
-            // Persist
-            SessionStorage.slimeConfig.set(next);
-            SLIME_CONFIG = next;
         }, EVOLVE.periodMs);
 
         return () => clearInterval(id);
-    }, []);
+    }, [isEvolving]);
+
+    const renderSlider = (key: SlimeConfigKey) => {
+        const { min, max, value } = slime.current[key];
+        return (
+            <div className="labeled-input" key={key}>
+                <label>{key}</label>
+                <input
+                    type="range"
+                    min={min}
+                    max={max}
+                    step={(max - min) / 100}
+                    value={value}
+                    onChange={(e) => {
+                        const v = parseFloat(e.target.value);
+                        // update sim (ref)
+                        slime.current[key].value = v;
+                        // update UI
+                        setSlimeUI({ ...slime.current });
+                        SessionStorage.slimeConfig.set(slime.current);
+                    }}
+                />
+            </div>
+        );
+    };
 
     return (
         <div className="slime-container">
-            {/* Put your Three.js container ONLY for the scene */}
+            {/* Three.js container, only for the scene. */}
             <div id={'slime-scene'} className="scene" ref={containerRef} />
 
             {/* Controls */}
             <div className="controls">
                 <button
-                    className="primary flex-column align-items-center justify-content-center"
+                    className="primary column items-center content-center"
                     onClick={() => setIsRunning(!isRunning)}
                 >
                     <FontAwesomeIcon icon={isRunning ? faPause : faPlay} />
-                    <kbd>space</kbd>
+                    <kbd>Space</kbd>
                 </button>
                 <button
-                    className="primary flex-column align-items-center justify-content-center"
+                    className="primary column items-center content-center"
                     onClick={performReset}
                 >
                     <FontAwesomeIcon icon={faArrowRotateRight} />
                     <kbd>R</kbd>
                 </button>
                 <button
-                    className="primary flex-column align-items-center justify-content-center"
+                    className="primary column items-center content-center"
                     onClick={toggleFullScreen}
                 >
-                    <FontAwesomeIcon icon={isFullscreen ? faCompress : faExpand} />
+                    <FontAwesomeIcon icon={isFullscreen() ? faCompress : faExpand} />
                     <kbd>F</kbd>
                 </button>
                 <div className="click-action-wrapper">
-                    Click
+                    <div className="row items-center">
+                        Click
+                        <FontAwesomeIcon
+                            style={{ color: 'gray', paddingLeft: '.25rem' }}
+                            className="icon"
+                            icon={faArrowPointer}
+                        />
+                    </div>
                     <button
                         className={`click-action ${clickBehavior}`}
                         onClick={() => {
@@ -709,26 +766,25 @@ const SlimeSceneThree: React.FC = () => {
                     </button>
                 </div>
 
+                {/* Render particles separately */}
+                <div className="row items-center">{renderSlider('slimes')}</div>
+
+                <div className="click-action-wrapper">
+                    Evolve
+                    <button
+                        className={`click-action ${isEvolving ? 'green' : 'gray'}`}
+                        onClick={() => setIsEvolving(!isEvolving)}
+                    >
+                        {isEvolving ? 'yes' : 'no'}
+                        <FontAwesomeIcon className="icon" icon={isEvolving ? faVialVirus : faBan} />
+                    </button>
+                </div>
+
                 {/* Slime config range inputs */}
                 <div className="config-panel">
-                    {Object.entries(SLIME_CONFIG).map(([key, { min, max, value }]) => (
-                        <div className="labeled-input" key={key}>
-                            <label>{key}</label>
-                            <input
-                                type="range"
-                                min={min}
-                                max={max}
-                                step={(max - min) / 100}
-                                value={value.toFixed(2)}
-                                onChange={(e) => {
-                                    const newValue = parseFloat(e.target.value);
-                                    SLIME_CONFIG[key as keyof SlimeConfig].value = newValue;
-                                    SessionStorage.slimeConfig.set(SLIME_CONFIG);
-                                }}
-                            />
-                            <small>{SLIME_CONFIG[key as keyof SlimeConfig].value.toFixed(2)}</small>
-                        </div>
-                    ))}
+                    {slimeConfigKeys
+                        .filter((key) => !EVOLVE.excluded.includes(key))
+                        .map(renderSlider)}
                 </div>
             </div>
         </div>
