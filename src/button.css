@@ -4,10 +4,10 @@ button {
     cursor: pointer;
     border: 1px solid var(--border-color);
     transition: 200ms;
+    padding: 0.25rem 0.5rem;
 
     &:disabled {
         cursor: not-allowed;
-        background-color: lightgray;
     }
     &:not(:disabled) {
         &:hover {
@@ -19,26 +19,86 @@ button {
     }
 }
 
+/*
+TEST setup.
+<div className="col">
+    {['purple', 'pink', 'red', 'orange', 'green', 'blue', 'gray'].map((color) => (
+        <div className="row">
+            <button className={`grow ${color}`}>{color}</button>
+            <button className={`grow light${color}`}>{color}</button>
+        </div>
+    ))}
+</div>
+*/
+
 button.purple,
-button.blue,
+button.pink,
 button.red,
-button.green {
+button.orange,
+button.green,
+button.blue,
+button.gray {
     color: white;
-    padding: 0.25rem 0.5rem;
+
+    &:disabled {
+        background-color: gray;
+    }
 }
 
+button.light-purple,
+button.light-pink,
+button.light-red,
+button.light-orange,
+button.light-green,
+button.light-blue,
+button.light-gray {
+    color: black;
+
+    &:disabled {
+        background-color: lightgray;
+    }
+}
+
+button.gray {
+    --background-color: gray;
+}
 button.purple {
     --background-color: var(--purple);
 }
-button.blue {
-    --background-color: var(--blue);
+button.pink {
+    --background-color: var(--pink);
 }
 button.red {
     --background-color: var(--red);
 }
+button.orange {
+    --background-color: var(--orange);
+}
 button.green {
     --background-color: var(--green);
 }
-button.gray {
-    --background-color: gray;
+button.blue {
+    --background-color: var(--blue);
+}
+
+button.lightgray {
+    --background-color: lightgray;
+}
+button.lightpurple {
+    --background-color: var(--light-purple);
+}
+button.lightpink {
+    --background-color: var(--light-pink);
+}
+button.lightred {
+    --background-color: var(--light-red);
+}
+button.lightorange {
+    --background-color: var(--light-orange);
+}
+button.lightgreen {
+    --background-color: var(--light-green);
+}
+button.lightblue {
+    --background-color: var(--light-blue);
 }

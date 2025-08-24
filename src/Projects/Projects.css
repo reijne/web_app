@@ -4,58 +4,65 @@
     width: 100%;
     overflow: hidden;
 
-    & .sidebar {
-        width: 20%;
-        max-width: 200px;
-        border-right: 1px solid var(--border-color);
-    }
-
-    & .home-link {
-        font-weight: bolder;
-        border-bottom: 2.5px solid var(--border-color) !important;
-        & .icon {
-            width: 2rem !important;
-            font-size: 2rem;
-            padding-left: 1rem;
-            padding-right: 1rem;
-        }
-    }
-
-    & .sidebar-link {
-        width: 100%;
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        justify-content: flex-start;
-        color: black;
-        background-color: transparent;
-        border-top: none;
-        border-right: none;
-        border-left: none;
-
-        border-bottom: 1px solid var(--border-color);
-        cursor: pointer;
-        & .icon {
-            font-size: 2rem;
-            width: 1rem;
-            padding-left: 1rem;
-            padding-right: 1rem;
-        }
-    }
-
-    & .sidebar-link.active,
-    & .sidebar-link:hover {
-        background-color: #ddd;
-    }
-
-    & .sidebar-link:active {
-        background-color: #ccc;
-    }
-
-    & .projects-content {
+    .projects-content {
         flex: 1;
         display: flex;
         justify-content: center;
         overflow-y: hidden;
+    }
+}
+
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    padding: 1px;
+
+    max-width: 20%;
+    border-right: 1px solid var(--border-color);
+
+    button {
+        font-size: large;
+
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .home-link {
+        font-weight: bolder;
+        font-size: x-large;
+
+        .icon {
+            width: 2rem;
+            padding-right: 0.5rem;
+        }
+    }
+
+    .sidebar-link {
+        border-top: 0;
+        border-left: 0;
+        border-right: 0;
+
+        .icon {
+            width: 1rem;
+            padding-left: 0.5rem;
+            padding-right: 1rem;
+        }
+    }
+
+    .link .label {
+        border-top: 2px solid transparent;
+        border-bottom: 2px solid transparent;
+    }
+
+    .sidebar-link:hover .label {
+        border-bottom: 2px solid var(--light-blue);
+    }
+
+    .sidebar-link.active,
+    .sidebar-link:active {
+        .label {
+            border-bottom: 2px solid var(--blue);
+        }
     }
 }

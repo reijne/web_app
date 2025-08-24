@@ -2,10 +2,10 @@ import React, { Suspense, useEffect, useState } from 'react';
 
 import { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import { faBorderAll } from '@fortawesome/free-solid-svg-icons/faBorderAll';
-import { faBugs } from '@fortawesome/free-solid-svg-icons/faBugs';
 import { faCircle } from '@fortawesome/free-solid-svg-icons/faCircle';
 import { faHouse } from '@fortawesome/free-solid-svg-icons/faHouse';
 import { faTableTennisPaddleBall } from '@fortawesome/free-solid-svg-icons/faTableTennisPaddleBall';
+import { faVirus } from '@fortawesome/free-solid-svg-icons/faVirus';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import { Loading } from '../components';
@@ -51,19 +51,13 @@ interface ThreeProject extends _BaseProject {
 type Project = PureProject | ThreeProject;
 
 const PURE_PROJECTS: PureProject[] = [
-    { type: 'pure', name: 'colorWheel', label: 'Color Wheel', icon: faCircle },
-    {
-        type: 'pure',
-        name: 'pong',
-        label: 'Speed-up Pong',
-        icon: faTableTennisPaddleBall,
-    },
-    { type: 'pure', name: 'grid', label: 'Grid Drawer', icon: faBorderAll },
+    { type: 'pure', name: 'colorWheel', label: 'Color', icon: faCircle },
+    { type: 'pure', name: 'pong', label: 'Pong', icon: faTableTennisPaddleBall },
+    { type: 'pure', name: 'grid', label: 'Grid', icon: faBorderAll },
 ];
 
 const THREE_PROJECTS: ThreeProject[] = [
-    { type: 'three', name: 'slime', label: 'Slime Simulation', icon: faBugs },
-    // { type: 'three', name: 'demo', label: 'Three Demo', icon: '③' },
+    { type: 'three', name: 'slime', label: 'Slime', icon: faVirus },
 ];
 
 function Projects({
@@ -109,20 +103,20 @@ function Sidebar({ selectedProject, handleProjectSelect, navigate }: SidebarProp
     const renderSelectProjectButton = (project: Project) => (
         <button
             key={project.name}
-            className={`sidebar-link ${selectedProject === project.name ? 'active' : ''}`}
+            className={`link sidebar-link ${selectedProject === project.name ? 'active' : ''}`}
             onClick={() => handleProjectSelect(project.name)}
         >
             <FontAwesomeIcon className="icon" icon={project.icon} />
-            <h3>{project.label}</h3>
+            <span className="label">{project.label}</span>
         </button>
     );
 
     return (
         <div className="sidebar">
-            <div onClick={() => navigate('')} className="sidebar-link home-link">
+            <button onClick={() => navigate('')} className="link home-link purple">
                 <FontAwesomeIcon className="icon" icon={faHouse} />
-                <h2>Home</h2>
-            </div>
+                <span className="label">Home</span>
+            </button>
 
             {PURE_PROJECTS.map((project) => renderSelectProjectButton(project))}
             {THREE_PROJECTS.map((project) => renderSelectProjectButton(project))}

@@ -13,22 +13,52 @@ body {
     /* https://www.w3schools.com/cssref/css_colors.php -- default colors available, very nicuh */
     --background-color: white;
     --border-color: black;
+
     --purple: #6a5acd /* slateblue */;
+    --light-purple: color-mix(in srgb, var(--purple) 45%, white);
+
     --pink: #c71585 /* mediumvioletred */;
+    --light-pink: color-mix(in srgb, violet 70%, white);
+
     --red: #dc143c; /* crimson WARNING: [push] operation in slime. */
+    --light-red: lightcoral;
+
     --orange: #ff4500 /* orangered */;
+    --light-orange: lightsalmon;
+
     --green: #32cd32 /* limegreen */;
+    --light-green: palegreen;
+
     --blue: #00bfff /* deepskyblue WARNING: [pull] operation in slime. */;
+    --light-blue: color-mix(in srgb, var(--blue) 40%, white);
 
     --purple-80: color-mix(in srgb, var(--purple) 80%, white);
+    --pink-80: color-mix(in srgb, var(--pink) 80%, white);
     --red-80: color-mix(in srgb, var(--red) 80%, white);
+    --orange-80: color-mix(in srgb, var(--orange) 80%, white);
     --green-80: color-mix(in srgb, var(--green) 80%, white);
     --blue-80: color-mix(in srgb, var(--blue) 80%, white);
 
+    --light-purple-80: color-mix(in srgb, var(--light-purple) 80%, white);
+    --light-pink-80: color-mix(in srgb, var(--light-pink) 80%, white);
+    --light-red-80: color-mix(in srgb, var(--light-red) 80%, white);
+    --light-orange-80: color-mix(in srgb, var(--light-orange) 80%, white);
+    --light-green-80: color-mix(in srgb, var(--light-green) 80%, white);
+    --light-blue-80: color-mix(in srgb, var(--light-blue) 80%, white);
+
     --purple-90: color-mix(in srgb, var(--purple) 90%, white);
+    --pink-90: color-mix(in srgb, var(--pink) 90%, white);
     --red-90: color-mix(in srgb, var(--red) 90%, white);
+    --orange-90: color-mix(in srgb, var(--orange) 90%, white);
     --green-90: color-mix(in srgb, var(--green) 90%, white);
     --blue-90: color-mix(in srgb, var(--blue) 90%, white);
+
+    --light-purple-90: color-mix(in srgb, var(--light-purple) 90%, white);
+    --light-pink-90: color-mix(in srgb, var(--light-pink) 90%, white);
+    --light-red-90: color-mix(in srgb, var(--light-red) 90%, white);
+    --light-orange-90: color-mix(in srgb, var(--light-orange) 90%, white);
+    --light-green-90: color-mix(in srgb, var(--light-green) 90%, white);
+    --light-blue-90: color-mix(in srgb, var(--light-blue) 90%, white);
 }
 
 #root {
@@ -52,6 +82,10 @@ body {
 .column {
     display: flex;
     flex-direction: column;
+}
+
+.grow {
+    flex-grow: 1;
 }
 
 .content-center {

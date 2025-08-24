@@ -112,15 +112,14 @@
     & .controls {
         flex-grow: 0;
         flex-shrink: 1;
+
+        padding: 1px;
+        gap: 3px;
         display: flex;
         flex-direction: row;
         justify-content: start;
         min-height: 0;
         overflow: hidden;
-
-        & button {
-            margin: 0.1rem;
-        }
 
         & .config-panel {
             overflow: auto;

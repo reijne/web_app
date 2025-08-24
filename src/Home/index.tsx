@@ -73,7 +73,7 @@ function HeaderText() {
         <div className="text-container">
             <h1>dev reijne():</h1>
             <div className="personal-description">
-                <p>Hello! I'm Youri Reijne, a software developer.</p>
+                <p>Hello, I'm Youri Reijne,</p>
                 <p>
                     Welcome to my personal space! Feel free to look around, click on some fun links
                     and check out my in-browser projects
