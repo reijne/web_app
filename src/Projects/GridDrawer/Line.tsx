@@ -11,7 +11,7 @@ interface LineProps {
 }
 
 const Line: React.FC<LineProps> = ({ start, end }) => {
-    const nodeWidth = 8;
+    const nodeWidth = 24;
     const nodeMargin = 10;
     const nodeSize = nodeWidth + nodeMargin * 2; // Node width (30px) + margin (2px * 2)
     const getCoordinates = (node: NodePosition) => {

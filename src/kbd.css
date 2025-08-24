@@ -1,21 +1,15 @@
 kbd {
-    /* These interpolated variables reference a SCSS map of HSL-based greys */
-    --kbd-color-border: #{color(grey, 80)};
-
     /* Match the page defaults in light mode but */
     /* switch to a light-ish grey in dark mode */
     background-color: white;
     color: black;
 
-    /* Round off the corners like physical keys have */
-    border-radius: 0.25rem;
-
     /* Add a simple border */
-    border: 1px solid var(--kbd-color-border);
+    border: 1px solid var(--border-color);
 
     /* A sharp shadow (with no blur) really gives */
     /* the old school keyboard look */
-    box-shadow: 0 2px 0 1px var(--kbd-color-border);
+    box-shadow: 0 2px 0 1px var(--border-color);
 
     /* Remove the text cursor — totally optional */
     /* but I wanted it for my hover effect */
@@ -53,7 +47,7 @@ kbd {
     /* "pushed" down and the shadow gets reduced so it looks like*/
     /* it might when typing on a physical keyboard.*/
     &:hover {
-        box-shadow: 0 1px 0 0.5px var(--kbd-color-border) !important;
+        box-shadow: 0 1px 0 0.5px var(--border-color) !important;
         top: 1px !important;
     }
 }

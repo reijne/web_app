@@ -54,6 +54,7 @@ function createParticles(canvas: HTMLCanvasElement): Particle[] {
 const STEER = {
     force: 0.1, // how aggressively we steer toward desired velocity (0..1)
     maxSpeed: 5, // pixels per frame when seeking
+    minSpeed: 0.01,
     slowRadius: 120, // start slowing when close to mouse
     damping: 0.995, // mild damping so velocities don't explode over time
 };
@@ -140,6 +141,14 @@ const Background: React.FC = () => {
                 // Mild damping always (prevents runaway speeds)
                 particle.vx *= STEER.damping;
                 particle.vy *= STEER.damping;
+
+                let speed = Math.sqrt(particle.vx * particle.vx + particle.vy * particle.vy);
+
+                if (speed < STEER.minSpeed) {
+                    const scale = STEER.minSpeed / (speed || 1);
+                    particle.vx *= scale;
+                    particle.vy *= scale;
+                }
             });
 
             particlesRef.current.forEach((particle) => {

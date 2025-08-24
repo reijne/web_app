@@ -31,15 +31,19 @@ const Controls: React.FC<ControlsProps> = ({
                     max="100"
                 />
             </div>
-            <button onClick={handleUndo} disabled={undoStack.length === 0} className="undo-btn">
-                Undo
+            <button onClick={handleUndo} disabled={undoStack.length === 0} className="undo-btn red">
+                undo
             </button>
-            <button onClick={handleRedo} disabled={redoStack.length === 0} className="redo-btn">
-                Redo
+            <button
+                onClick={handleRedo}
+                disabled={redoStack.length === 0}
+                className="redo-btn green"
+            >
+                redo
             </button>
-            <button onClick={handleReset} className="reset-btn">
-                Reset
-            </button>{' '}
+            <button onClick={handleReset} className="reset-btn purple">
+                reset
+            </button>
         </div>
     );
 };

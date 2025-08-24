@@ -201,7 +201,7 @@ const Pong: React.FC = () => {
                 </p>
             </div>
             <button
-                className="Pong-reset-score-button secondary"
+                className="Pong-reset-score-button blue"
                 onClick={() => {
                     setPlayer1Score(0);
                     setPlayer2Score(0);

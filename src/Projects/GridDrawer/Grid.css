@@ -2,11 +2,9 @@
     position: relative; /* Important to contain the absolutely positioned SVG */
     display: flex;
     flex-direction: column;
-    /* align-items: center; */
-    /* justify-content: center; */
-    margin: 20px;
     height: 100%;
     width: 100%;
+    overflow: auto;
 
     & .grid {
         display: flex;
@@ -22,16 +20,16 @@
 
     & .grid-node {
         box-sizing: border-box;
-        width: 8px; /* Explicit width for nodes */
-        height: 8px; /* Explicit height for nodes */
-        background-color: var(--gray);
+        width: 24px; /* Explicit width for nodes */
+        height: 24px; /* Explicit height for nodes */
+        background-color: gray;
         margin: 10px; /* Small margin between nodes */
         border-radius: 50%;
         cursor: pointer;
     }
 
     & .selected {
-        background-color: var(--secondary-color);
+        background-color: var(--blue);
     }
 
     & .line-canvas {
@@ -53,8 +51,7 @@
         margin-top: 20px;
         padding: 10px;
         background-color: rgba(255, 255, 255, 0.8);
-        border-radius: 5px;
-        box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+        font-size: medium;
     }
 
     & .grid-size-input label {
@@ -66,24 +63,17 @@
         width: 50px;
         text-align: center;
         padding: 3px;
-        border-radius: 5px;
-        border: 1px solid #ccc;
+        border: 1px solid var(--border-color);
     }
 
     & button {
-        padding: 5px 10px;
-        font-size: 14px;
-        border: none;
-        background-color: var(--secondary-color);
-        color: white;
-        cursor: pointer;
-        border-radius: 5px;
         display: flex;
         align-items: center;
         justify-content: center;
+        font-size: medium;
 
         &:disabled {
-            background-color: #999;
+            background-color: gray;
             cursor: not-allowed;
         }
 

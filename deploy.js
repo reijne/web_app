@@ -47,7 +47,7 @@ function ensureESLintPasses() {
 // Build the project
 function build() {
     console.log('🚀 Building the project...');
-    execSync('npm run build', { stdio: 'inherit' });
+    execSync('npm run build-with-hash', { stdio: 'inherit' });
 }
 
 function deploy() {

@@ -7,13 +7,12 @@
     & .sidebar {
         width: 20%;
         max-width: 200px;
-        background-color: #f4f4f4;
-        box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+        border-right: 1px solid var(--border-color);
     }
 
     & .home-link {
         font-weight: bolder;
-        border-bottom: 2.5px solid var(--gray) !important;
+        border-bottom: 2.5px solid var(--border-color) !important;
         & .icon {
             width: 2rem !important;
             font-size: 2rem;
@@ -28,13 +27,13 @@
         flex-direction: row;
         align-items: center;
         justify-content: flex-start;
-        color: #333;
+        color: black;
         background-color: transparent;
         border-top: none;
         border-right: none;
         border-left: none;
 
-        border-bottom: 1px solid var(--gray);
+        border-bottom: 1px solid var(--border-color);
         cursor: pointer;
         & .icon {
             font-size: 2rem;
@@ -57,7 +56,6 @@
         flex: 1;
         display: flex;
         justify-content: center;
-        padding: 20px;
         overflow-y: hidden;
     }
 }

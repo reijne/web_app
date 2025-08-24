@@ -10,14 +10,25 @@ body {
 }
 
 :root {
-    --primary-color: #7455e2;
-    --primary-color-dark: #4731ab;
-    --secondary-color: #1bccbd;
-    --secondary-color-dark: #099ea6;
-    --off-black: #333333;
-    --gray: #c6c6c6;
-    --light-gray: #e0e0e0;
-    --lightest-gray: #f4f4f4;
+    /* https://www.w3schools.com/cssref/css_colors.php -- default colors available, very nicuh */
+    --background-color: white;
+    --border-color: black;
+    --purple: #6a5acd /* slateblue */;
+    --pink: #c71585 /* mediumvioletred */;
+    --red: #dc143c; /* crimson WARNING: [push] operation in slime. */
+    --orange: #ff4500 /* orangered */;
+    --green: #32cd32 /* limegreen */;
+    --blue: #00bfff /* deepskyblue WARNING: [pull] operation in slime. */;
+
+    --purple-80: color-mix(in srgb, var(--purple) 80%, white);
+    --red-80: color-mix(in srgb, var(--red) 80%, white);
+    --green-80: color-mix(in srgb, var(--green) 80%, white);
+    --blue-80: color-mix(in srgb, var(--blue) 80%, white);
+
+    --purple-90: color-mix(in srgb, var(--purple) 90%, white);
+    --red-90: color-mix(in srgb, var(--red) 90%, white);
+    --green-90: color-mix(in srgb, var(--green) 90%, white);
+    --blue-90: color-mix(in srgb, var(--blue) 90%, white);
 }
 
 #root {
@@ -32,59 +43,6 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: center;
-}
-
-.border {
-    border-bottom: 1px solid black;
-}
-
-button {
-    background-color: white;
-    font-weight: bold;
-    border-radius: 0.25rem;
-    cursor: pointer;
-    border: 1px solid black;
-
-    &:disabled {
-        cursor: not-allowed;
-    }
-    &:not(:disabled) {
-        &:hover {
-            filter: brightness(0.9);
-        }
-        &:active {
-            filter: brightness(0.8);
-        }
-    }
-}
-
-button.primary,
-button.secondary,
-button.red,
-button.green {
-    color: white;
-    padding: 0.25rem 0.5rem;
-}
-
-button.primary {
-    background-color: var(--primary-color);
-}
-
-button.secondary {
-    background-color: var(--secondary-color);
-}
-
-button.red {
-    background-color: red;
-    color: black;
-}
-
-button.green {
-    background-color: green;
-}
-
-button.gray {
-    background-color: gray;
 }
 
 .row {
@@ -110,4 +68,45 @@ button.gray {
 
 .pointer {
     cursor: pointer;
+}
+
+.abs {
+    position: absolute;
+}
+
+.rel {
+    position: relative;
+}
+
+.hide {
+    opacity: 0;
+}
+
+.grid {
+    display: grid;
+}
+
+.grid-1 {
+    grid-row: 1;
+    grid-column: 1;
+}
+
+.grid-row-1 {
+    grid-row: 1;
+}
+
+.grid-col-1 {
+    grid-column: 1;
+}
+
+.grid-col-2 {
+    grid-column: 2;
+}
+
+.auto {
+    overflow: auto;
+}
+
+.gap-1 {
+    gap: 0.25rem;
 }

@@ -8,7 +8,7 @@
 
 .Pong-canvas {
     background-color: black;
-    border: 1px solid black;
+    border: 1px solid var(--border-color);
 
     & canvas {
         display: block;
@@ -18,7 +18,7 @@
 }
 
 .Pong-reset-score-button {
-    background-color: var(--secondary-color);
+    background-color: var(--blue);
     margin-top: 2rem;
     padding: 10px 20px;
     font-size: 1.2rem;

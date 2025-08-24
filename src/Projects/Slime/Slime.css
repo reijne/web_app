@@ -23,26 +23,89 @@
         display: flex;
         flex-grow: 1;
         overflow-y: hidden;
-        flex-wrap: wrap;
         justify-content: space-around;
         align-items: center;
         margin-left: 0.5rem;
         margin-right: 0.5rem;
+        border-left: 1px solid var(--border-color);
+        border-right: 1px solid var(--border-color);
     }
 
     & .labeled-input {
+        --height: 0.25rem;
+        --diameter: 1.25rem;
+
         display: flex;
         flex-grow: 1;
         flex-direction: column;
         align-items: center;
         font-size: small;
         padding: 0 0.5rem;
+
         &:not(:last-child) {
-            border-right: 1px solid lightgray;
+            border-right: 1px solid var(--border-color);
         }
 
-        & input {
-            width: 80%;
+        /* The slider itself */
+        .slider {
+            -webkit-appearance: none; /* Override default CSS styles */
+            appearance: none;
+            width: 100%; /* Full-width */
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+            height: var(--height);
+            background: black;
+
+            opacity: 0.8; /* Set transparency (for mouse-over effects on hover) */
+            -webkit-transition: 0.2s; /* 0.2 seconds transition on hover */
+            transition: opacity 0.2s;
+
+            cursor: pointer;
+        }
+
+        /* The slider handle (use -webkit- (Chrome, Opera, Safari, Edge) and -moz- (Firefox) to override default look) */
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none; /* Override default look */
+            appearance: none;
+            width: var(--diameter);
+            height: var(--diameter);
+            background-repeat: no-repeat;
+
+            background: white;
+            border: 1px solid var(--border-color);
+        }
+
+        /* Hover/active should go on the slider, then style the thumb */
+        .slider:hover::-webkit-slider-thumb {
+            background: var(--green-80);
+        }
+
+        .slider:active::-webkit-slider-thumb {
+            background: var(--green-90);
+        }
+
+        .slider.evolving::-webkit-slider-thumb {
+            /* URL encoding for color: #32cd32 => %2332cd32 */
+            background-image: url('data:image/svg+xml,<svg fill="%2332cd32" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M288 32c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 11.5c0 49.9-60.3 74.9-95.6 39.6L120.2 75C107.7 62.5 87.5 62.5 75 75s-12.5 32.8 0 45.3l8.2 8.2C118.4 163.7 93.4 224 43.5 224L32 224c-17.7 0-32 14.3-32 32s14.3 32 32 32l11.5 0c49.9 0 74.9 60.3 39.6 95.6L75 391.8c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0l8.2-8.2c35.3-35.3 95.6-10.3 95.6 39.6l0 11.5c0 17.7 14.3 32 32 32s32-14.3 32-32l0-11.5c0-49.9 60.3-74.9 95.6-39.6l8.2 8.2c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3l-8.2-8.2c-35.3-35.3-10.3-95.6 39.6-95.6l11.5 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-11.5 0c-49.9 0-74.9-60.3-39.6-95.6l8.2-8.2c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-8.2 8.2C348.3 118.4 288 93.4 288 43.5L288 32zM176 224a48 48 0 1 1 96 0 48 48 0 1 1 -96 0zm128 56a24 24 0 1 1 0 48 24 24 0 1 1 0-48z"/></svg>');
+            background-repeat: no-repeat;
+        }
+
+        .slider::-moz-range-thumb {
+            width: var(--diameter); /* Set a specific slider handle width */
+            height: var(--diameter); /* Slider handle height */
+            /* URL encoding for color: #32cd32 => %2332cd32 */
+            background-image: url('data:image/svg+xml,<svg fill="%2332cd32" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M288 32c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 11.5c0 49.9-60.3 74.9-95.6 39.6L120.2 75C107.7 62.5 87.5 62.5 75 75s-12.5 32.8 0 45.3l8.2 8.2C118.4 163.7 93.4 224 43.5 224L32 224c-17.7 0-32 14.3-32 32s14.3 32 32 32l11.5 0c49.9 0 74.9 60.3 39.6 95.6L75 391.8c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0l8.2-8.2c35.3-35.3 95.6-10.3 95.6 39.6l0 11.5c0 17.7 14.3 32 32 32s32-14.3 32-32l0-11.5c0-49.9 60.3-74.9 95.6-39.6l8.2 8.2c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3l-8.2-8.2c-35.3-35.3-10.3-95.6 39.6-95.6l11.5 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-11.5 0c-49.9 0-74.9-60.3-39.6-95.6l8.2-8.2c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-8.2 8.2C348.3 118.4 288 93.4 288 43.5L288 32zM176 224a48 48 0 1 1 96 0 48 48 0 1 1 -96 0zm128 56a24 24 0 1 1 0 48 24 24 0 1 1 0-48z"/></svg>');
+            background-repeat: no-repeat;
+        }
+    }
+
+    .icon.virus {
+        background: white;
+        border: 1px solid var(--border-color);
+        border-radius: 50 !important;
+
+        &.evolving {
+            color: var(--green);
         }
     }
 
@@ -53,8 +116,6 @@
         flex-direction: row;
         justify-content: start;
         min-height: 0;
-        border: 1px solid lightgray;
-        border-radius: 0.25rem;
         overflow: hidden;
 
         & button {
@@ -62,7 +123,6 @@
         }
 
         & .config-panel {
-            border-left: 1px solid lightgray;
             overflow: auto;
             flex-wrap: nowrap;
             margin: 0;
@@ -89,17 +149,17 @@
         flex-grow: 1;
 
         &.none {
-            background-color: grey;
+            --background-color: grey;
         }
         &.push {
-            background-color: red;
+            --background-color: var(--orange);
         }
         &.pull {
-            background-color: green;
+            --background-color: var(--blue);
         }
 
         .icon {
-            margin-left: 0.5rem;
+            margin-left: 0.25rem;
             font-size: 0.75em;
         }
     }
@@ -116,7 +176,7 @@
         margin-bottom: 0;
     }
 
-    & button.primary {
+    & button.purple {
         font-size: larger;
     }
 }

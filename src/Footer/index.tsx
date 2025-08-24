@@ -6,7 +6,17 @@ export default function Footer() {
     const renderCommitHash = () => {
         const commitHash = process.env.REACT_APP_GIT_HASH;
         if (commitHash == null) {
-            return <div className="hash">7ak3d3v</div>;
+            return (
+                <div className="hash">
+                    <a
+                        href={`https://github.com/reijne/web_app/commit/`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        7ak3d3v
+                    </a>
+                </div>
+            );
         } else {
             return (
                 <div className="hash">

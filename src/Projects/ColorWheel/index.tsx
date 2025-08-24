@@ -235,7 +235,7 @@ const ColorWheel: React.FC = () => {
                             width: '10px',
                             height: '10px',
                             borderRadius: '50%',
-                            border: '2px solid black',
+                            border: '2px solid var(--border-color)',
                             backgroundColor: 'transparent',
                             pointerEvents: 'none',
                         }}
