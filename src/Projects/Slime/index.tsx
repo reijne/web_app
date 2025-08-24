@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-import { faArrowPointer } from '@fortawesome/free-solid-svg-icons/faArrowPointer';
 import { faArrowRotateRight } from '@fortawesome/free-solid-svg-icons/faArrowRotateRight';
 import { faArrowsToCircle } from '@fortawesome/free-solid-svg-icons/faArrowsToCircle';
 import { faBan } from '@fortawesome/free-solid-svg-icons/faBan';
 import { faCircleXmark } from '@fortawesome/free-solid-svg-icons/faCircleXmark';
 import { faCompress } from '@fortawesome/free-solid-svg-icons/faCompress';
 import { faExpand } from '@fortawesome/free-solid-svg-icons/faExpand';
+import { faHandPointer } from '@fortawesome/free-solid-svg-icons/faHandPointer';
 import { faPause } from '@fortawesome/free-solid-svg-icons/faPause';
 import { faPlay } from '@fortawesome/free-solid-svg-icons/faPlay';
 import { faVialVirus } from '@fortawesome/free-solid-svg-icons/faVialVirus';
@@ -26,7 +26,6 @@ interface ConfigValue {
     value: number;
     min: number;
     max: number;
-    decimals?: number;
 }
 
 const slimeConfigKeys = [
@@ -40,6 +39,12 @@ const slimeConfigKeys = [
     'trail',
 ] as const;
 
+const FPS_ABSOLUTE_MIN = 55; // Scale to minimum 60hz
+const FPS_ABSOLUTE_MAX = 115; // Scale to 120hz
+
+// Fraction of the max FPS, used when we can actually reach that.
+const FPS_MIN = Math.round(FPS_ABSOLUTE_MAX * 0.8);
+
 type SlimeConfigKey = (typeof slimeConfigKeys)[number];
 
 export type SlimeConfig = Record<SlimeConfigKey, ConfigValue>;
@@ -52,29 +57,28 @@ export interface SlimeParticle {
 
 const DEFAULT_SLIME_CONFIG: SlimeConfig = {
     slimes: {
-        value: 25_000,
-        min: 1_000,
-        max: 50_000,
-        decimals: 0,
+        value: 10_000,
+        min: 100,
+        max: 10_000,
     },
     moveSpeed: { value: 1.25, min: 0.5, max: 4 },
-    turnSpeed: { value: 0.2, min: 0.05, max: 0.5 },
-    jitter: { value: 0, min: 0, max: 8 },
-    turnJitter: { value: 0.5, min: 0, max: 1 },
+    turnSpeed: { value: 0.2, min: 0.05, max: 0.75 },
+    jitter: { value: 0, min: 0, max: 2 },
+    turnJitter: { value: 0.5, min: 0, max: 2 },
     sensorAngle: {
         value: Math.PI / 4,
-        min: Math.PI / 8,
+        min: Math.PI / 6,
         max: Math.PI / 2,
     },
-    sensorDistance: { value: 8.5, min: 5, max: 40 },
-    trail: { value: 0.99, min: 0.9, max: 0.99, decimals: 3 },
+    sensorDistance: { value: 25, min: 25, max: 100 },
+    trail: { value: 0.995, min: 0.95, max: 0.995 },
     ...SessionStorage.slimeConfig.get(),
 };
 
 // ===== Evolution for Slime Config =====
 const EVOLVE = {
-    periodMs: 5000, // how often to evolve
-    magnitude: 0.25, // fraction of (max - min) per nudge
+    periodMs: 500, // how often to evolve
+    magnitude: 0.1, // fraction of (max - min) per nudge
     fieldsPerStep: 1, // how many fields to nudge each time
     excluded: ['slimes'],
 };
@@ -92,16 +96,11 @@ function pickK<T>(arr: T[], k: number) {
 // Nudge one ConfigValue by a tiny random amount
 function nudge(val: ConfigValue, mag = EVOLVE.magnitude): number {
     const range = val.max - val.min;
-
-    // Original, taking random steps each time, scaled with magnitude.
-    // const delta = (Math.random() * 2 - 1) * (range * mag);
-
-    // Either take a positive or negative step
+    // step in either direction
     let delta = range * mag;
-    if (Math.random() < 0.5) {
+    if (val.value === val.max || (val.value !== val.min && Math.random() < 0.5)) {
         delta *= -1;
     }
-
     return clamp(val.value + delta, val.min, val.max);
 }
 
@@ -131,7 +130,7 @@ const REPULSION = {
     maxRadiusPercent: 0.25,
     growPercentPerTick: 0.001,
 };
-const COLOR_FADE_SPEED = 0.5;
+const COLOR_FADE_SPEED = 0.05;
 
 // ==============
 // Helper functions
@@ -141,10 +140,7 @@ function createParticle(width: number, height: number): SlimeParticle {
     const cy = height / 2;
     const maxRadius = Math.min(width, height) / 20;
 
-    // Random angle (0..2π)
     const theta = Math.random() * Math.PI * 2;
-
-    // Random radius, corrected for uniform distribution
     const r = Math.sqrt(Math.random()) * maxRadius;
 
     return {
@@ -154,36 +150,20 @@ function createParticle(width: number, height: number): SlimeParticle {
     };
 }
 
-function clampToBounds(particle: SlimeParticle, width: number, height: number) {
+function clampToBounds(p: SlimeParticle, width: number, height: number) {
     const offset = 10;
-    if (particle.x <= offset) {
-        particle.x = width - offset;
+    if (p.x <= offset) {
+        p.x = width - offset;
     }
-    if (particle.x > width - offset) {
-        particle.x = offset + 1;
+    if (p.x > width - offset) {
+        p.x = offset + 1;
     }
-    if (particle.y <= offset) {
-        particle.y = height - offset;
+    if (p.y <= offset) {
+        p.y = height - offset;
     }
-    if (particle.y >= height - offset) {
-        particle.y = offset + 1;
+    if (p.y >= height - offset) {
+        p.y = offset + 1;
     }
-}
-
-// For now, create a fresh imageData-like 2D array to store "trails"
-function createTrailBuffer(prevBuf: number[][] | null, width: number, height: number) {
-    // same logic you used
-    const newBuf = Array.from({ length: height }, () => Array(width).fill(0));
-    if (prevBuf) {
-        const copyH = Math.min(prevBuf.length, newBuf.length);
-        for (let y = 0; y < copyH; y++) {
-            const copyW = Math.min(prevBuf[y].length, newBuf[y].length);
-            for (let x = 0; x < copyW; x++) {
-                newBuf[y][x] = prevBuf[y][x];
-            }
-        }
-    }
-    return newBuf;
 }
 
 function getCircleColor(clickBehavior: ClickBehaviorAction) {
@@ -199,6 +179,19 @@ function getCircleColor(clickBehavior: ClickBehaviorAction) {
     }
 }
 
+// ====== Perf buffers (Typed Arrays) ======
+function buildHueLUT(hueDeg: number) {
+    // 256 intensities × RGB
+    const lut = new Uint8Array(256 * 3);
+    for (let i = 0; i < 256; i++) {
+        const [r, g, b] = hslToRgb(hueDeg / 360, 1.0, i / 255);
+        lut[i * 3 + 0] = r;
+        lut[i * 3 + 1] = g;
+        lut[i * 3 + 2] = b;
+    }
+    return lut;
+}
+
 // ==============
 // Main component
 // ==============
@@ -208,13 +201,14 @@ const SlimeSceneThree: React.FC = () => {
 
     // Slime state
     const slime = useRef<SlimeConfig>({ ...DEFAULT_SLIME_CONFIG });
-    // Slime state copy, used to update input sliders reactively.
+    // UI mirror (so sliders reflect evolving values)
     // eslint-disable-next-line
     const [slimeUI, setSlimeUI] = useState<SlimeConfig>(slime.current);
     const [clickBehavior, setClickBehavior] = useState<ClickBehaviorAction>('pull');
     const [isRunning, setIsRunning] = useState(true);
     const [isEvolving, setIsEvolving] = useState(true);
     const [reset, setReset] = useState(0);
+    const [fpsMin, setFpsMin] = useState(FPS_ABSOLUTE_MIN);
 
     // For rendering
     const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -227,19 +221,59 @@ const SlimeSceneThree: React.FC = () => {
     > | null>(null);
 
     // Data for our 2D logic
-    const [sceneSize, setSceneSize] = useState<{
-        width: number;
-        height: number;
-    } | null>(null);
+    const [sceneSize, setSceneSize] = useState<{ width: number; height: number } | null>(null);
 
-    const trailRef = useRef<number[][] | null>(null);
     const particlesRef = useRef<SlimeParticle[]>([]);
     const frameRef = useRef(0);
 
-    // We'll store the texture that we draw onto a plane
+    // Trails (intensity 0..255) and RGBA backing store for the texture
+    const trailsRef = useRef<Uint8Array | null>(null);
+    const texDataRef = useRef<Uint8Array | null>(null);
+
+    // Three texture
     const textureRef = useRef<THREE.DataTexture | null>(null);
 
     const isFullscreen = () => document.fullscreenElement != null;
+
+    // Allocate/resize typed arrays
+    function allocBuffers(width: number, height: number) {
+        const pixels = width * height;
+        if (!trailsRef.current || trailsRef.current.length !== pixels) {
+            trailsRef.current = new Uint8Array(pixels); // zeroed by default
+        }
+        if (!texDataRef.current || texDataRef.current.length !== pixels * 4) {
+            texDataRef.current = new Uint8Array(pixels * 4);
+        }
+    }
+
+    /**
+     * Resize the amount of actual slime particles we have.
+     * @param newCount WARNING: Must be in line with the step amount in slider.
+     *
+     */
+    function resizeParticles(newCount: number) {
+        const arr = particlesRef.current;
+        if (arr.length < newCount) {
+            const toAdd = newCount - arr.length;
+            for (let i = 0; i <= toAdd; i++) {
+                arr.push({ ...arr[i % arr.length] });
+            }
+        } else if (arr.length > newCount) {
+            arr.length = newCount;
+        }
+    }
+
+    /** Resize particles and force re-render by updating dependencies. */
+    function resizeParticlesImmediate(newCount: number) {
+        newCount = Math.round(newCount / 100) * 100;
+
+        resizeParticles(newCount);
+
+        // reflect in config + UI (so the slider shows the change)
+        slime.current.slimes.max = newCount;
+        slime.current.slimes.value = newCount;
+        setSlimeUI({ ...slime.current });
+    }
 
     useEffect(function resizeHandler() {
         const el = containerRef.current;
@@ -250,7 +284,6 @@ const SlimeSceneThree: React.FC = () => {
         const ro = new ResizeObserver((entries) => {
             for (const entry of entries) {
                 const { width, height } = entry.contentRect;
-                // Only set when both are positive
                 if (width > 0 && height > 0) {
                     setSceneSize({ width: Math.floor(width), height: Math.floor(height) });
                 }
@@ -266,15 +299,18 @@ const SlimeSceneThree: React.FC = () => {
                 return;
             }
 
+            // ensure buffers exist before binding DataTexture
+            allocBuffers(sceneSize.width, sceneSize.height);
+
             // Create Renderer
             const renderer = new THREE.WebGLRenderer({ antialias: false });
             renderer.setSize(sceneSize.width, sceneSize.height);
             containerRef.current.appendChild(renderer.domElement);
 
-            // Create Scene + Ortho Camera for a 2D-like approach
+            // Scene + Ortho Camera
             const scene = new THREE.Scene();
-            // OrthographicCamera "fills" the region from (0,0) to (width,height)
-            // if we set left=0, right=width, etc. We'll just invert y for convenience.
+            scene.matrixAutoUpdate = false;
+
             const camera = new THREE.OrthographicCamera(
                 0,
                 sceneSize.width,
@@ -285,38 +321,41 @@ const SlimeSceneThree: React.FC = () => {
             );
             camera.position.set(0, 0, 1);
             camera.lookAt(0, 0, 0);
+            camera.matrixAutoUpdate = false;
 
-            // Create a plane that matches the width/height in "virtual pixels"
+            // Full-screen plane
             const geometry = new THREE.PlaneGeometry(sceneSize.width, sceneSize.height);
-            // We'll shift it so that plane's center is at (width/2, height/2)
             geometry.translate(sceneSize.width / 2, sceneSize.height / 2, 0);
 
-            // For the texture, we create a placeholder DataTexture, size = width×height
-            // RGBA, each pixel 4 bytes
-            const size = sceneSize.width * sceneSize.height;
-            const data = new Uint8Array(size * 4); // fill with 0
+            const raw = texDataRef.current;
+            const view = new Uint8Array(raw?.buffer as ArrayBuffer); // ensure ArrayBuffer (not SharedArrayBuffer)
+
             const tex = new THREE.DataTexture(
-                data,
+                view,
                 sceneSize.width,
                 sceneSize.height,
                 THREE.RGBAFormat,
                 THREE.UnsignedByteType
             );
             tex.needsUpdate = true;
+            tex.magFilter = THREE.LinearFilter;
+            tex.minFilter = THREE.LinearFilter; // add
+            tex.generateMipmaps = false; // add
+            tex.flipY = false; // harmless explicit
 
             const mat = new THREE.MeshBasicMaterial({ map: tex });
             const mesh = new THREE.Mesh(geometry, mat);
+            mesh.matrixAutoUpdate = false;
             scene.add(mesh);
 
-            const circleGeo = new THREE.CircleGeometry(1, 32); // radius=1, 32 segments
+            const circleGeo = new THREE.CircleGeometry(1, 32);
             const circleMat = new THREE.MeshBasicMaterial({
                 color: getCircleColor(clickBehavior),
                 transparent: true,
-
-                opacity: 0.2, // slightly see-through
+                opacity: 0.2,
             });
             const circleMesh = new THREE.Mesh(circleGeo, circleMat);
-            circleMesh.visible = false; // start hidden
+            circleMesh.visible = false;
             scene.add(circleMesh);
 
             // Store references
@@ -328,7 +367,6 @@ const SlimeSceneThree: React.FC = () => {
 
             // Cleanup
             return () => {
-                // remove old canvas
                 if (renderer != null) {
                     renderer.dispose();
                     renderer.domElement.remove();
@@ -342,39 +380,48 @@ const SlimeSceneThree: React.FC = () => {
         [reset, sceneSize]
     );
 
+    // Mirror count for particle (re)alloc deps without poking .current in deps
+    const slimesCount = slime.current.slimes.value;
+
     useEffect(
         function createSlimeTrailAndParticles() {
-            if (sceneSize == null) {
+            if (!sceneSize) {
                 return;
             }
 
-            // Re-init trail buffer
-            if (
-                trailRef.current == null ||
-                trailRef.current.length !== sceneSize.height ||
-                trailRef.current[0].length !== sceneSize.width
-            ) {
-                trailRef.current = createTrailBuffer(
-                    trailRef.current,
-                    sceneSize.width,
-                    sceneSize.height
-                );
-            }
+            const width = sceneSize.width;
+            const height = sceneSize.height;
+            // (Re)alloc typed arrays for this size
+            allocBuffers(width, height);
 
-            // Re-init particles
-            if (particlesRef.current.length !== slime.current.slimes.value) {
-                // Create brand new set
-                particlesRef.current = Array.from({ length: slime.current.slimes.value }, () =>
-                    createParticle(sceneSize.width, sceneSize.height)
-                );
+            // Re-init particles only if the count actually changed
+            const arr = particlesRef.current;
+            if (arr.length === 0) {
+                for (let i = 0; i <= slimesCount; i++) {
+                    arr.push(createParticle(width, height));
+                }
+            } else if (arr.length !== slimesCount) {
+                resizeParticles(slimesCount);
             }
         },
-        [sceneSize, slime.current.slimes.value, reset]
+        [sceneSize, slimesCount, reset]
     );
 
+    const hueIntRef = useRef(-1);
+    const lutRef = useRef<Uint8Array | null>(null);
+
+    function getHueLUT() {
+        const hueInt = Math.floor(frameRef.current) % 360;
+        if (hueInt !== hueIntRef.current || !lutRef.current) {
+            hueIntRef.current = hueInt;
+            lutRef.current = buildHueLUT(hueInt);
+        }
+        return lutRef.current;
+    }
+    const fpsRef = useRef({ last: performance.now(), frames: 0, fps: 0 });
     useEffect(
         function update() {
-            if (sceneSize == null) {
+            if (!sceneSize) {
                 return;
             }
             let animId: number;
@@ -411,139 +458,184 @@ const SlimeSceneThree: React.FC = () => {
             window.addEventListener('mousedown', handleMouseDown);
             window.addEventListener('mouseup', handleMouseUp);
 
+            const showMouseDown = () => {
+                // Update interaction gizmo
+                if (circleRef.current) {
+                    if (mouse.down && clickBehavior !== 'none') {
+                        circleRef.current.visible = true;
+                        circleRef.current.position.set(mouse.x, mouse.y, 0);
+                        const bubbleRadius =
+                            mouse.size * Math.min(sceneSize.width, sceneSize.height);
+                        circleRef.current.scale.set(bubbleRadius, bubbleRadius, 1);
+                    } else {
+                        circleRef.current.visible = false;
+                    }
+                }
+            };
+
             // ==============
             // Slime Updaters
             // ==============
-            const updateSlimes = (mouse: { x: number; y: number; down: boolean; size: number }) => {
-                if (sceneSize == null) {
+            const updateSlimes = () => {
+                if (sceneSize == null || trailsRef.current == null) {
                     return;
                 }
-                const screenSize = Math.min(sceneSize.width, sceneSize.height);
-                const particlesCurrent = particlesRef.current;
-                const trailCurrent = trailRef.current;
-                if (particlesCurrent == null || trailCurrent == null) {
-                    return;
-                }
+                const w = sceneSize.width;
+                const h = sceneSize.height;
+                const screenSize = Math.min(w, h);
+                const arr = particlesRef.current;
+                const trails = trailsRef.current;
+                const speed = slime.current.moveSpeed.value;
+                const jitter = slime.current.jitter.value;
+                const turnJitter = slime.current.turnJitter.value;
 
-                particlesRef.current.forEach((p) => {
-                    // 1. If clicking, repel or attract
+                for (let i = 0; i < arr.length; i++) {
+                    const p = arr[i];
+
+                    // 1. repel/attract when clicking — use squared distance
                     if (clickBehavior !== 'none' && mouse.down) {
                         const dx = p.x - mouse.x;
                         const dy = p.y - mouse.y;
-                        const dist = Math.sqrt(dx * dx + dy * dy);
-                        if (dist < mouse.size * screenSize) {
-                            if (clickBehavior === 'push') {
-                                p.angle = Math.atan2(dy, dx);
-                            }
-                            if (clickBehavior === 'pull') {
-                                p.angle = Math.atan2(dy, dx) + Math.PI;
-                            }
+                        const r = mouse.size * screenSize;
+                        const r2 = r * r;
+                        const dist2 = dx * dx + dy * dy;
+
+                        if (dist2 < r2) {
+                            const ang = Math.atan2(dy, dx);
+                            p.angle = clickBehavior === 'push' ? ang : ang + Math.PI;
                         }
-                        // Expand bubble
                         if (mouse.size < REPULSION.maxRadiusPercent) {
                             mouse.size += REPULSION.growPercentPerTick;
                         }
                     }
 
-                    // 1. Add jitter to the angle
-                    p.angle += (Math.random() - 0.5) * slime.current.turnJitter.value;
-                    // 2. Move the particle using the updated angle
-                    p.x +=
-                        Math.cos(p.angle) * slime.current.moveSpeed.value +
-                        (Math.random() - 0.5) * slime.current.jitter.value;
-                    p.y +=
-                        Math.sin(p.angle) * slime.current.moveSpeed.value +
-                        (Math.random() - 0.5) * slime.current.jitter.value;
-                    clampToBounds(p, sceneSize.width, sceneSize.height);
+                    // 2. Move (cache trig once)
+                    p.angle += (Math.random() - 0.5) * turnJitter;
+                    const ca = Math.cos(p.angle);
+                    const sa = Math.sin(p.angle);
+                    p.x += ca * speed + (Math.random() - 0.5) * jitter;
+                    p.y += sa * speed + (Math.random() - 0.5) * jitter;
+                    clampToBounds(p, w, h);
 
-                    // 3. Mark trail
-                    trailCurrent[Math.floor(p.y)][Math.floor(p.x)] = 1;
-                });
-
-                // 4. "Sensor" logic to follow trails (optional)
-                simulateTrailFollowing();
+                    // 3. Mark trail at full intensity
+                    const xi = p.x | 0;
+                    const yi = p.y | 0;
+                    const idx = yi * w + xi;
+                    if (idx >= 0 && idx < trails.length) {
+                        trails[idx] = 255;
+                    }
+                }
             };
 
             const simulateTrailFollowing = () => {
-                const trailCurrent = trailRef.current;
-                if (trailCurrent == null || sceneSize == null) {
+                const trails = trailsRef.current;
+                if (trails == null) {
                     return;
                 }
-                particlesRef.current.forEach((p) => {
-                    const forwardX = Math.floor(
-                        p.x + Math.cos(p.angle) * slime.current.sensorDistance.value
-                    );
-                    const forwardY = Math.floor(
-                        p.y + Math.sin(p.angle) * slime.current.sensorDistance.value
-                    );
+                const w = sceneSize.width;
+                const h = sceneSize.height;
+                const sd = slime.current.sensorDistance.value;
+                const sa = slime.current.sensorAngle.value;
+                const turn = slime.current.turnSpeed.value;
 
-                    const leftX = Math.floor(
-                        p.x +
-                            Math.cos(p.angle - slime.current.sensorAngle.value) *
-                                slime.current.sensorDistance.value
-                    );
-                    const leftY = Math.floor(
-                        p.y +
-                            Math.sin(p.angle - slime.current.sensorAngle.value) *
-                                slime.current.sensorDistance.value
-                    );
+                const clampX = (x: number) => (x < 0 ? 0 : x >= w ? w - 1 : x);
+                const clampY = (y: number) => (y < 0 ? 0 : y >= h ? h - 1 : y);
 
-                    const rightX = Math.floor(
-                        p.x +
-                            Math.cos(p.angle + slime.current.sensorAngle.value) *
-                                slime.current.sensorDistance.value
-                    );
-                    const rightY = Math.floor(
-                        p.y +
-                            Math.sin(p.angle + slime.current.sensorAngle.value) *
-                                slime.current.sensorDistance.value
-                    );
+                const arr = particlesRef.current;
+                for (let i = 0; i < arr.length; i++) {
+                    const p = arr[i];
 
-                    // clamp
-                    const safeForwardX = Math.max(0, Math.min(sceneSize.width - 1, forwardX));
-                    const safeForwardY = Math.max(0, Math.min(sceneSize.height - 1, forwardY));
-                    const safeLeftX = Math.max(0, Math.min(sceneSize.width - 1, leftX));
-                    const safeLeftY = Math.max(0, Math.min(sceneSize.height - 1, leftY));
-                    const safeRightX = Math.max(0, Math.min(sceneSize.width - 1, rightX));
-                    const safeRightY = Math.max(0, Math.min(sceneSize.height - 1, rightY));
+                    const ca = Math.cos(p.angle);
+                    const sa_ = Math.sin(p.angle);
 
-                    const fI = trailCurrent[safeForwardY][safeForwardX];
-                    const lI = trailCurrent[safeLeftY][safeLeftX];
-                    const rI = trailCurrent[safeRightY][safeRightX];
+                    const fX = (p.x + ca * sd) | 0;
+                    const fY = (p.y + sa_ * sd) | 0;
+
+                    const la = p.angle - sa;
+                    const ra = p.angle + sa;
+
+                    const lX = (p.x + Math.cos(la) * sd) | 0;
+                    const lY = (p.y + Math.sin(la) * sd) | 0;
+                    const rX = (p.x + Math.cos(ra) * sd) | 0;
+                    const rY = (p.y + Math.sin(ra) * sd) | 0;
+
+                    const fIdx = clampY(fY) * w + clampX(fX);
+                    const lIdx = clampY(lY) * w + clampX(lX);
+                    const rIdx = clampY(rY) * w + clampX(rX);
+
+                    const fI = trails[fIdx];
+                    const lI = trails[lIdx];
+                    const rI = trails[rIdx];
 
                     if (lI > fI && lI > rI) {
-                        p.angle -= slime.current.turnSpeed.value;
+                        p.angle -= turn;
                     } else if (rI > fI && rI > lI) {
-                        p.angle += slime.current.turnSpeed.value;
+                        p.angle += turn;
                     }
-                });
+                }
             };
 
-            // =======================
-            // Convert trails → texture
-            // =======================
-            const updateTextureFromTrail = () => {
-                if (textureRef.current == null || trailRef.current == null || sceneSize == null) {
+            // Decay + colorize to texture in ONE pass using a hue LUT
+            const decayAndBlit = () => {
+                const tex = textureRef.current;
+                const rgba = texDataRef.current;
+                const trails = trailsRef.current;
+
+                if (tex == null || rgba == null || trails == null) {
                     return;
                 }
 
-                const data = textureRef.current.image.data as Uint8Array;
-                // frameRef is used for rainbow hue offset
-                const hueOffset = frameRef.current;
+                const lut = getHueLUT();
 
-                let idx = 0;
-                for (let y = 0; y < sceneSize.height; y++) {
-                    for (let x = 0; x < sceneSize.width; x++) {
-                        const intensity = trailRef.current[y][x];
-                        const [r, g, b] = hslToRgb((hueOffset % 360) / 360, 1.0, intensity);
-                        data[idx + 0] = r; // R
-                        data[idx + 1] = g; // G
-                        data[idx + 2] = b; // B
-                        data[idx + 3] = 255; // A
-                        idx += 4;
+                // integer decay: floor(old * decay), but with a 256 scale so we can bitshift
+                const decay256 = Math.floor(slime.current.trail.value * 256); // 0..256
+                for (let i = 0, j = 0; i < trails.length; i++, j += 4) {
+                    const oldI = trails[i];
+                    let newI = (oldI * decay256) >> 8; // floor division by 256
+
+                    // Optional guard: if decay is very close to 1, ensure progress:
+                    if (newI === oldI && oldI > 0 && decay256 < 256) {
+                        newI = oldI - 1;
+                    }
+
+                    trails[i] = newI;
+
+                    const off = newI * 3;
+                    rgba[j + 0] = lut[off + 0];
+                    rgba[j + 1] = lut[off + 1];
+                    rgba[j + 2] = lut[off + 2];
+                    rgba[j + 3] = 255; // fully opaque (you already do this in most places)
+                }
+
+                tex.needsUpdate = true;
+            };
+
+            /**
+             * Scale down the amount of slime particles if we do not reach lower limit,
+             * scale up if we can afford more.
+             */
+            const ensureFpsLimits = () => {
+                fpsRef.current.frames++;
+                const now = performance.now();
+                if (now - fpsRef.current.last >= 1000) {
+                    fpsRef.current.fps = fpsRef.current.frames;
+                    fpsRef.current.frames = 0;
+                    fpsRef.current.last = now;
+
+                    if (fpsRef.current.fps < fpsMin) {
+                        const next = slime.current.slimes.value * 0.9;
+                        resizeParticlesImmediate(next);
+                    } else if (
+                        fpsRef.current.fps > FPS_ABSOLUTE_MAX &&
+                        slime.current.slimes.value === slime.current.slimes.max
+                    ) {
+                        if (fpsMin !== FPS_MIN) {
+                            setFpsMin(FPS_MIN);
+                        }
+                        const next = slime.current.slimes.value * 1.1;
+                        resizeParticlesImmediate(next);
                     }
                 }
-                textureRef.current.needsUpdate = true;
             };
 
             const renderLoop = () => {
@@ -553,54 +645,27 @@ const SlimeSceneThree: React.FC = () => {
                 }
 
                 if (!isRunning) {
-                    // If paused, just re-render the existing frame
                     rendererRef.current.render(sceneRef.current, cameraRef.current);
                     animId = requestAnimationFrame(renderLoop);
                     return;
                 }
 
-                // 1. Decay the existing trails
-                if (trailRef.current) {
-                    for (let y = 0; y < sceneSize.height; y++) {
-                        for (let x = 0; x < sceneSize.width; x++) {
-                            trailRef.current[y][x] *= slime.current.trail.value;
-                        }
-                    }
-                }
+                ensureFpsLimits();
+                showMouseDown();
+                // move + stamp trails, then decay+blit
+                updateSlimes();
+                simulateTrailFollowing();
+                decayAndBlit();
 
-                // 2.5: Update the circle visuals
-                if (circleRef.current) {
-                    if (mouse.down && clickBehavior !== 'none') {
-                        circleRef.current.visible = true;
-                        // Position the circle in your 2D scene
-                        circleRef.current.position.set(mouse.x, mouse.y, 0);
-
-                        // Scale the mesh by the bubble radius.
-                        // (CircleGeometry has radius=1 by default, so we scale).
-                        const bubbleRadius =
-                            mouse.size * Math.min(sceneSize.width, sceneSize.height);
-                        circleRef.current.scale.set(bubbleRadius, bubbleRadius, 1);
-                    } else {
-                        circleRef.current.visible = false;
-                    }
-                }
-
-                // 2. Move the slimes
-                updateSlimes(mouse);
-
-                // 3. Convert the numeric "trail buffer" to a texture image
-                updateTextureFromTrail();
-
-                // 4. Render
+                // render
                 rendererRef.current.render(sceneRef.current, cameraRef.current);
 
-                // 5. Next frame
+                // next frame hue
                 frameRef.current = (frameRef.current + COLOR_FADE_SPEED) % 360;
 
                 animId = requestAnimationFrame(renderLoop);
             };
 
-            // Start
             renderLoop();
 
             // Cleanup
@@ -620,9 +685,13 @@ const SlimeSceneThree: React.FC = () => {
     // UI Handlers
     // ===============
     const performReset = () => {
-        trailRef.current = null;
+        // clear trails/particles but keep buffers allocated
+        const t = trailsRef.current;
+        if (t) {
+            t.fill(0);
+        }
         particlesRef.current = [];
-        setReset(reset + 1);
+        setReset((r) => r + 1);
     };
 
     useEffect(() => {
@@ -651,7 +720,6 @@ const SlimeSceneThree: React.FC = () => {
             if (e.key === 'r') {
                 performReset();
             }
-            // TODO: Make dev only?
             if (e.key === 'd') {
                 SessionStorage.slimeConfig.del();
                 window.location.reload();
@@ -660,13 +728,14 @@ const SlimeSceneThree: React.FC = () => {
                 toggleFullScreen();
             }
             if (e.key === ' ' || e.key === 'Spacebar') {
-                setIsRunning(!isRunning);
+                setIsRunning((v) => !v);
             }
         };
         window.addEventListener('keydown', handleKeydown);
         return () => window.removeEventListener('keydown', handleKeydown);
-    }, [reset, isRunning, isFullscreen]);
+    }, []);
 
+    // Evolution (throttled UI refresh)
     useEffect(() => {
         if (!isEvolving) {
             return;
@@ -675,13 +744,13 @@ const SlimeSceneThree: React.FC = () => {
         const id = window.setInterval(() => {
             const nonCount = slimeConfigKeys.filter((k) => !EVOLVE.excluded.includes(k));
             const chosen = pickK(nonCount, Math.min(EVOLVE.fieldsPerStep, nonCount.length));
-
-            // Nudge chosen fields
             for (const k of chosen) {
                 const currentValue = slime.current[k];
                 slime.current[k] = { ...currentValue, value: nudge(currentValue) };
-                setSlimeUI({ ...slime.current });
             }
+            // refresh sliders occasionally (not every single nudge if you speed up)
+            setSlimeUI({ ...slime.current });
+            SessionStorage.slimeConfig.set(slime.current);
         }, EVOLVE.periodMs);
 
         return () => clearInterval(id);
@@ -700,10 +769,8 @@ const SlimeSceneThree: React.FC = () => {
                     value={value}
                     onChange={(e) => {
                         const v = parseFloat(e.target.value);
-                        // update sim (ref)
-                        slime.current[key].value = v;
-                        // update UI
-                        setSlimeUI({ ...slime.current });
+                        slime.current[key].value = v; // update sim (ref)
+                        setSlimeUI({ ...slime.current }); // update UI
                         SessionStorage.slimeConfig.set(slime.current);
                     }}
                 />
@@ -714,7 +781,11 @@ const SlimeSceneThree: React.FC = () => {
     return (
         <div className="slime-container">
             {/* Three.js container, only for the scene. */}
-            <div id={'slime-scene'} className="scene" ref={containerRef} />
+            <div
+                id={'slime-scene'}
+                className={`scene ${clickBehavior != 'none' ? 'pointer' : ''}`}
+                ref={containerRef}
+            />
 
             {/* Controls */}
             <div className="controls">
@@ -739,13 +810,14 @@ const SlimeSceneThree: React.FC = () => {
                     <FontAwesomeIcon icon={isFullscreen() ? faCompress : faExpand} />
                     <kbd>F</kbd>
                 </button>
+
                 <div className="click-action-wrapper">
                     <div className="row items-center">
                         Click
                         <FontAwesomeIcon
                             style={{ color: 'gray', paddingLeft: '.25rem' }}
                             className="icon"
-                            icon={faArrowPointer}
+                            icon={faHandPointer}
                         />
                     </div>
                     <button
@@ -753,7 +825,7 @@ const SlimeSceneThree: React.FC = () => {
                         onClick={() => {
                             const newClickBehavior = getNextClickBehavior(clickBehavior);
                             setClickBehavior(newClickBehavior);
-                            if (circleRef.current != null) {
+                            if (circleRef.current) {
                                 circleRef.current.material.color = getCircleColor(newClickBehavior);
                             }
                         }}
@@ -765,9 +837,6 @@ const SlimeSceneThree: React.FC = () => {
                         />
                     </button>
                 </div>
-
-                {/* Render particles separately */}
-                <div className="row items-center">{renderSlider('slimes')}</div>
 
                 <div className="click-action-wrapper">
                     Evolve

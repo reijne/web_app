@@ -107,3 +107,7 @@ button.gray {
 .p-0 {
     padding: 0;
 }
+
+.pointer {
+    cursor: pointer;
+}
