@@ -16,6 +16,7 @@ import * as THREE from 'three';
 import { hslToRgb } from '../../utils/colors';
 import { clamp } from '../../utils/number';
 import { SessionStorage } from '../../utils/session';
+import { useWakeLock } from '../../utils/wake';
 
 import './Slime.css';
 
@@ -202,6 +203,8 @@ const SlimeSceneThree: React.FC = () => {
     const [slimeUI, setSlimeUI] = useState<SlimeConfig>(slime.current);
     const [clickBehavior, setClickBehavior] = useState<ClickBehaviorAction>('pull');
     const [isRunning, setIsRunning] = useState(true);
+    // Keep the screen awake while running
+    useWakeLock(isRunning);
     const [isEvolving, setIsEvolving] = useState(true);
     const [reset, setReset] = useState(0);
     const [fpsMin, setFpsMin] = useState(FPS_ABSOLUTE_MIN);
