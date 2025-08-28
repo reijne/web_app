@@ -40,10 +40,34 @@ const slimeConfigKeys = [
     'trail',
 ] as const;
 
-const FPS_ABSOLUTE_MIN = 55; // Scale to minimum 60hz
-const FPS_ABSOLUTE_MAX = 115; // Scale to 120hz
-const FPS_MIN = Math.round(FPS_ABSOLUTE_MAX * 0.8);
+// Define FPS limits for scaling the simulation automatically.
+const SIXTY = { min: 55, max: 59 }; // target ~60Hz
+const ONE_TWENTY = { min: 100, max: 115 }; // target ~120Hz
 
+// If you only want 60 or 120 buckets, keep it simple:
+function bucketHz(measured: number): 60 | 120 {
+    // Anything >= ~100 we'll treat as a 120Hz class display
+    return measured >= 100 ? 120 : 60;
+}
+
+// Measure refresh rate quickly (≈ 0.6s)
+function detectDisplayHz(callback: (hz: 60 | 120) => void) {
+    let frames = 0;
+    const start = performance.now();
+    let raf = 0;
+    const sample = () => {
+        frames++;
+        const elapsed = performance.now() - start;
+        if (elapsed < 600) {
+            raf = requestAnimationFrame(sample);
+        } else {
+            const fps = (frames * 1000) / elapsed;
+            callback(bucketHz(fps));
+        }
+    };
+    raf = requestAnimationFrame(sample);
+    return () => cancelAnimationFrame(raf);
+}
 type SlimeConfigKey = (typeof slimeConfigKeys)[number];
 export type SlimeConfig = Record<SlimeConfigKey, ConfigValue>;
 
@@ -54,13 +78,13 @@ export interface SlimeParticle {
 }
 
 const DEFAULT_SLIME_CONFIG: SlimeConfig = {
-    slimes: { value: 10_000, min: 100, max: 10_000 },
-    moveSpeed: { value: 0.5, min: 0.2, max: 2 },
-    turnSpeed: { value: 0.4, min: 0.4, max: 0.8 },
+    slimes: { value: 25_000, min: 100, max: 25_000 },
+    moveSpeed: { value: 1.5, min: 0.2, max: 3 },
+    turnSpeed: { value: 0.4, min: 0.6, max: 0.8 },
     jitter: { value: 0, min: 0, max: 1 },
-    turnJitter: { value: 0.5, min: 0, max: 1 },
-    sensorAngle: { value: Math.PI / 6, min: Math.PI / 10, max: Math.PI / 4 },
-    sensorDistance: { value: 25, min: 10, max: 100 },
+    turnJitter: { value: 0.3, min: 0, max: 1 },
+    sensorAngle: { value: Math.PI / 10, min: Math.PI / 10, max: Math.PI / 4 },
+    sensorDistance: { value: 10, min: 10, max: 100 },
     trail: { value: 0.995, min: 0.97, max: 0.995 },
     ...SessionStorage.slimeConfig.get(),
 };
@@ -140,18 +164,24 @@ function createParticle(width: number, height: number): SlimeParticle {
 }
 
 function clampToBounds(p: SlimeParticle, width: number, height: number) {
-    const offset = 10;
-    if (p.x <= offset) {
-        p.x = width - offset;
+    const margin = 10;
+    const minX = margin,
+        maxX = width - margin,
+        spanX = maxX - minX;
+    const minY = margin,
+        maxY = height - margin,
+        spanY = maxY - minY;
+
+    if (p.x < minX) {
+        p.x += spanX;
+    } else if (p.x >= maxX) {
+        p.x -= spanX;
     }
-    if (p.x > width - offset) {
-        p.x = offset + 1;
-    }
-    if (p.y <= offset) {
-        p.y = height - offset;
-    }
-    if (p.y >= height - offset) {
-        p.y = offset + 1;
+
+    if (p.y < minY) {
+        p.y += spanY;
+    } else if (p.y >= maxY) {
+        p.y -= spanY;
     }
 }
 
@@ -202,12 +232,29 @@ const SlimeSceneThree: React.FC = () => {
     // eslint-disable-next-line
     const [slimeUI, setSlimeUI] = useState<SlimeConfig>(slime.current);
     const [clickBehavior, setClickBehavior] = useState<ClickBehaviorAction>('pull');
+    const [isShowingSlimeCount, setIsShowingSlimeCount] = useState(false);
     const [isRunning, setIsRunning] = useState(true);
     // Keep the screen awake while running
     useWakeLock(isRunning);
     const [isEvolving, setIsEvolving] = useState(true);
     const [reset, setReset] = useState(0);
-    const [fpsMin, setFpsMin] = useState(FPS_ABSOLUTE_MIN);
+
+    const [fpsMin, setFpsMin] = useState(SIXTY.min);
+    const [fpsMax, setFpsMax] = useState(SIXTY.max);
+
+    useEffect(() => {
+        // Don't run while tab hidden; your render loop already guards this, so fine.
+        const stop = detectDisplayHz((hz) => {
+            if (hz === 120) {
+                setFpsMin(ONE_TWENTY.min);
+                setFpsMax(ONE_TWENTY.max);
+            } else {
+                setFpsMin(SIXTY.min);
+                setFpsMax(SIXTY.max);
+            }
+        });
+        return stop;
+    }, []);
 
     // For rendering
     const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -221,7 +268,7 @@ const SlimeSceneThree: React.FC = () => {
     const [sceneSize, setSceneSize] = useState<{ width: number; height: number } | null>(null);
 
     const particlesRef = useRef<SlimeParticle[]>([]);
-    const frameRef = useRef(0);
+    const frameRef = useRef(100);
 
     // Trails (intensity 0..255) and RGBA backing store for the texture
     const trailsRef = useRef<Uint8Array | null>(null);
@@ -325,7 +372,6 @@ const SlimeSceneThree: React.FC = () => {
 
             const renderer = new THREE.WebGLRenderer({
                 antialias: false,
-                preserveDrawingBuffer: true,
             });
             renderer.setSize(sceneSize.width, sceneSize.height);
             renderer.setPixelRatio(1);
@@ -360,8 +406,8 @@ const SlimeSceneThree: React.FC = () => {
                 THREE.UnsignedByteType
             );
             tex.needsUpdate = true;
-            tex.magFilter = THREE.LinearFilter;
-            tex.minFilter = THREE.LinearFilter;
+            tex.magFilter = THREE.NearestFilter;
+            tex.minFilter = THREE.NearestFilter;
             tex.generateMipmaps = false;
             tex.flipY = false;
 
@@ -599,17 +645,18 @@ const SlimeSceneThree: React.FC = () => {
                     fpsRef.current.frames = 0;
                     fpsRef.current.last = now;
 
-                    if (fpsRef.current.fps < fpsMin) {
-                        const next = slime.current.slimes.value * 0.9;
+                    const fps = fpsRef.current.fps;
+
+                    // If we're dipping under the lower bound, shrink population a bit
+                    if (fps < fpsMin) {
+                        const next = slime.current.slimes.value * 0.9; // -10%
                         resizeParticlesImmediate(next);
-                    } else if (
-                        fpsRef.current.fps > FPS_ABSOLUTE_MAX &&
-                        slime.current.slimes.value === slime.current.slimes.max
-                    ) {
-                        if (fpsMin !== FPS_MIN) {
-                            setFpsMin(FPS_MIN);
-                        }
-                        const next = slime.current.slimes.value * 1.1;
+                        return;
+                    }
+
+                    // If we're comfortably above the upper bound and we're at the current cap, grow a bit
+                    if (fps > fpsMax && slime.current.slimes.value === slime.current.slimes.max) {
+                        const next = slime.current.slimes.value * 1.1; // +10%
                         resizeParticlesImmediate(next);
                     }
                 }
@@ -708,8 +755,14 @@ const SlimeSceneThree: React.FC = () => {
             if (e.metaKey || e.ctrlKey || e.shiftKey) {
                 return;
             }
+            if (e.key === 'c') {
+                cycleClickBehavior();
+            }
             if (e.key === 'r') {
                 performReset();
+            }
+            if (e.key === 's') {
+                setIsShowingSlimeCount((v) => !v);
             }
             if (e.key === 'd') {
                 SessionStorage.slimeConfig.del();
@@ -776,6 +829,14 @@ const SlimeSceneThree: React.FC = () => {
         );
     };
 
+    const cycleClickBehavior = () => {
+        const next = getNextClickBehavior(clickBehavior);
+        setClickBehavior(next);
+        if (circleRef.current) {
+            circleRef.current.material.color = getCircleColor(next);
+        }
+    };
+
     return (
         <div className="slime-container">
             {/* Three.js container, only for the scene. */}
@@ -820,13 +881,7 @@ const SlimeSceneThree: React.FC = () => {
                     </div>
                     <button
                         className={`click-action ${clickBehavior}`}
-                        onClick={() => {
-                            const next = getNextClickBehavior(clickBehavior);
-                            setClickBehavior(next);
-                            if (circleRef.current) {
-                                circleRef.current.material.color = getCircleColor(next);
-                            }
-                        }}
+                        onClick={cycleClickBehavior}
                     >
                         {clickBehavior}
                         <FontAwesomeIcon
@@ -854,6 +909,7 @@ const SlimeSceneThree: React.FC = () => {
                         </span>
                     </button>
                 </div>
+                <span>{isShowingSlimeCount ? slime.current.slimes.value : undefined}</span>
 
                 {/* Slime config range inputs */}
                 <div className="config-panel">

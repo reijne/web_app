@@ -13,7 +13,7 @@
         & canvas {
             flex-grow: 1;
             min-height: 0;
-            filter: blur(1px);
+            filter: blur(0.75px);
             z-index: 2;
         }
     }
