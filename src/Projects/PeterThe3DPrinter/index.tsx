@@ -73,7 +73,10 @@ const PeterThe3DPrinter: React.FC = () => {
             <div className="filament-header row grow text-left">
                 <div className="column grow justify-between">
                     <h1>Peter the 3D printer</h1>
-                    <p className="filament-count">Available Filaments: {FILAMENTS.length} colors</p>
+                    <p className="filament-count">
+                        Peter can print with 4 colors at the same time, and has these{' '}
+                        {FILAMENTS.length} colors available to you
+                    </p>
                 </div>
                 <img
                     src={peterImage}
