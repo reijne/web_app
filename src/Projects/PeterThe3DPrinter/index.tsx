@@ -74,8 +74,19 @@ const PeterThe3DPrinter: React.FC = () => {
                 <div className="column grow justify-between">
                     <h1>Peter the 3D printer</h1>
                     <p className="filament-count">
-                        Peter can print with 4 colors at the same time, and has these{' '}
-                        {FILAMENTS.length} colors available to you
+                        Peter can print with up to 4 colors at the same time and has{' '}
+                        {FILAMENTS.length} different filament colors available.
+                    </p>
+                    <p>
+                        Choose your 3D print at{' '}
+                        <a
+                            href="https://makerworld.com/en/3d-models?devModelNames=C12&nozzleDiameters=0.4"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="makerworld-link"
+                        >
+                            MakerWorld
+                        </a>
                     </p>
                 </div>
                 <img
