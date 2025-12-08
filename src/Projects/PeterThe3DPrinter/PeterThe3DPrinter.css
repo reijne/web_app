@@ -1,0 +1,116 @@
+.filament-container {
+    flex: auto;
+    padding: 1rem;
+    overflow: auto;
+}
+
+.filament-header {
+    margin-bottom: 1rem;
+}
+
+.filament-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.filament-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
+    transition: transform 0.2s ease
+}
+
+.filament-card:hover {
+    transform: translateY(-4px);
+}
+
+.filament-color-circle {
+    width: 120px;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+.filament-material-badge {
+    background-color: white;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.peter-image {
+    max-width: 200px;
+    max-height: 200px;
+    object-fit: contain;
+    z-index: 10;
+    transition: transform 0.2s ease;
+}
+
+.peter-image:hover {
+    transform: scale(1.05);
+}
+
+.image-lightbox {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    cursor: pointer;
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.lightbox-image {
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .peter-image {
+        max-width: 120px;
+        max-height: 120px;
+        bottom: 0.5rem;
+        right: 0.5rem;
+    }
+
+    .filament-container {
+        padding: 1rem;
+    }
+
+    .filament-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 1rem;
+    }
+
+    .filament-card {
+        padding: 1rem;
+    }
+
+    .filament-color-circle {
+        width: 100px;
+        height: 100px;
+    }
+}

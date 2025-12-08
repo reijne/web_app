@@ -3,6 +3,7 @@ import React, { Suspense, useEffect, useState } from 'react';
 import { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import { faBorderAll } from '@fortawesome/free-solid-svg-icons/faBorderAll';
 import { faCircle } from '@fortawesome/free-solid-svg-icons/faCircle';
+import { faCube } from '@fortawesome/free-solid-svg-icons/faCube';
 import { faHouse } from '@fortawesome/free-solid-svg-icons/faHouse';
 import { faTableTennisPaddleBall } from '@fortawesome/free-solid-svg-icons/faTableTennisPaddleBall';
 import { faVirus } from '@fortawesome/free-solid-svg-icons/faVirus';
@@ -14,6 +15,7 @@ import './Projects.css';
 
 const ColorWheel = React.lazy(() => import('./ColorWheel'));
 const GridDrawer = React.lazy(() => import('./GridDrawer'));
+const Peter = React.lazy(() => import('./PeterThe3DPrinter'));
 const Pong = React.lazy(() => import('./Pong'));
 const Slime = React.lazy(() => import('./Slime'));
 
@@ -22,6 +24,7 @@ const PROJECT_MAPPING = {
     colorWheel: <ColorWheel />,
     pong: <Pong />,
     grid: <GridDrawer />,
+    peter: <Peter />,
     slime: <Slime />,
 };
 
@@ -54,6 +57,7 @@ const PURE_PROJECTS: PureProject[] = [
     { type: 'pure', name: 'colorWheel', label: 'Color', icon: faCircle },
     { type: 'pure', name: 'pong', label: 'Pong', icon: faTableTennisPaddleBall },
     { type: 'pure', name: 'grid', label: 'Grid', icon: faBorderAll },
+    { type: 'pure', name: 'peter', label: 'Peter', icon: faCube },
 ];
 
 const THREE_PROJECTS: ThreeProject[] = [
