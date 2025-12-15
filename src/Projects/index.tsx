@@ -5,6 +5,7 @@ import { faBorderAll } from '@fortawesome/free-solid-svg-icons/faBorderAll';
 import { faCircle } from '@fortawesome/free-solid-svg-icons/faCircle';
 import { faCube } from '@fortawesome/free-solid-svg-icons/faCube';
 import { faHouse } from '@fortawesome/free-solid-svg-icons/faHouse';
+import { faNewspaper } from '@fortawesome/free-solid-svg-icons/faNewspaper';
 import { faTableTennisPaddleBall } from '@fortawesome/free-solid-svg-icons/faTableTennisPaddleBall';
 import { faVirus } from '@fortawesome/free-solid-svg-icons/faVirus';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -18,6 +19,7 @@ const GridDrawer = React.lazy(() => import('./GridDrawer'));
 const Peter = React.lazy(() => import('./PeterThe3DPrinter'));
 const Pong = React.lazy(() => import('./Pong'));
 const Slime = React.lazy(() => import('./Slime'));
+const Brightside = React.lazy(() => import('./Brightside'));
 
 /** Defines all the projects we have available, and points to the lazy loaded component for it. */
 const PROJECT_MAPPING = {
@@ -25,6 +27,7 @@ const PROJECT_MAPPING = {
     pong: <Pong />,
     grid: <GridDrawer />,
     peter: <Peter />,
+    brightside: <Brightside />,
     slime: <Slime />,
 };
 
@@ -58,6 +61,7 @@ const PURE_PROJECTS: PureProject[] = [
     { type: 'pure', name: 'pong', label: 'Pong', icon: faTableTennisPaddleBall },
     { type: 'pure', name: 'grid', label: 'Grid', icon: faBorderAll },
     { type: 'pure', name: 'peter', label: 'Peter', icon: faCube },
+    { type: 'pure', name: 'brightside', label: 'Brightside', icon: faNewspaper },
 ];
 
 const THREE_PROJECTS: ThreeProject[] = [

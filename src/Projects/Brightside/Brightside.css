@@ -1,0 +1,155 @@
+* { box-sizing: border-box; }
+
+.page {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  padding: 1rem;
+  background-color: var(--background-color);
+  color: var(--border-color);
+  font-family: 'Fira Code', monospace;
+}
+
+.story-wrapper {
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  width: 100%;
+  align-items: center;
+}
+
+.story-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  max-width: 24rem;
+  background: var(--background-color);
+  border: 1px solid var(--border-color);
+  padding: 16px;
+}
+
+.metaRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+.outlet {
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.meta { opacity: 0.6; }
+.dot { opacity: 0.4; }
+
+.headline {
+  margin: 0 0 10px;
+  font-size: 18px;
+  line-height: 1.25;
+  color: var(--border-color);
+}
+
+.dek {
+  margin: 0 0 14px;
+  font-size: 14px;
+  line-height: 1.5;
+  opacity: 0.7;
+}
+
+/* Spin box base */
+.spinBox {
+  border: 1px solid;
+  padding: 12px;
+}
+
+.spinTop {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 10px;
+}
+
+.spinChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.spinText {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 600;
+}
+
+/* Accent variants using index.css colors */
+.purple-accent {
+    border-color: var(--purple);
+    background: var(--light-purple-90);
+}
+.purple-accent .spinChip {
+    background: var(--purple-90);
+}
+.pink-accent {
+  border-color: var(--pink);
+  background: var(--light-pink-90);
+}
+.pink-accent .spinChip {
+  background: var(--pink-90);
+}
+.red-accent {
+  border-color: var(--red);
+  background: var(--light-red-90);
+}
+.red-accent .spinChip {
+  background: var(--red-90);
+}
+.orange-accent {
+  border-color: var(--orange);
+  background: var(--light-orange-90);
+}
+.orange-accent .spinChip {
+  background: var(--orange-90);
+}
+
+.green-accent {
+  border-color: var(--green);
+  background: var(--light-green-90);
+}
+.green-accent .spinChip {
+  background: var(--green-90);
+}
+
+.blue-accent {
+  border-color: var(--blue);
+  background: var(--light-blue-90);
+}
+.blue-accent .spinChip {
+  background: var(--blue-90);
+}
+
+
+.story-footer {
+  margin-top: 24px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+}
+
+.story-footerText {
+  opacity: 0.5;
+}
