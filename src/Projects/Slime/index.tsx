@@ -145,6 +145,23 @@ const REPULSION = {
 };
 const COLOR_FADE_SPEED = 0.05;
 
+// Max render resolution to cap pixel processing
+const MAX_RENDER_WIDTH = 1920;
+const MAX_RENDER_HEIGHT = 1080;
+
+function calcRenderSize(displayWidth: number, displayHeight: number) {
+    // Scale down if display exceeds max render resolution
+    const scaleX = displayWidth > MAX_RENDER_WIDTH ? MAX_RENDER_WIDTH / displayWidth : 1;
+    const scaleY = displayHeight > MAX_RENDER_HEIGHT ? MAX_RENDER_HEIGHT / displayHeight : 1;
+    const scale = Math.min(scaleX, scaleY);
+
+    return {
+        renderWidth: Math.floor(displayWidth * scale),
+        renderHeight: Math.floor(displayHeight * scale),
+        scale,
+    };
+}
+
 // ==============
 // Helper functions
 // ==============
@@ -265,7 +282,16 @@ const SlimeSceneThree: React.FC = () => {
     );
 
     // Data for our 2D logic
-    const [sceneSize, setSceneSize] = useState<{ width: number; height: number } | null>(null);
+    const [sceneSize, setSceneSize] = useState<{
+        // Display size (actual screen pixels)
+        displayWidth: number;
+        displayHeight: number;
+        // Render size (internal buffer size, capped at 1920x1080)
+        width: number;
+        height: number;
+        // Scale factor to convert display coords to render coords
+        scale: number;
+    } | null>(null);
 
     const particlesRef = useRef<SlimeParticle[]>([]);
     const frameRef = useRef(100);
@@ -353,7 +379,19 @@ const SlimeSceneThree: React.FC = () => {
             for (const entry of entries) {
                 const { width, height } = entry.contentRect;
                 if (width > 0 && height > 0) {
-                    setSceneSize({ width: Math.floor(width), height: Math.floor(height) });
+                    const displayWidth = Math.floor(width);
+                    const displayHeight = Math.floor(height);
+                    const { renderWidth, renderHeight, scale } = calcRenderSize(
+                        displayWidth,
+                        displayHeight
+                    );
+                    setSceneSize({
+                        displayWidth,
+                        displayHeight,
+                        width: renderWidth,
+                        height: renderHeight,
+                        scale,
+                    });
                 }
             }
         });
@@ -367,15 +405,24 @@ const SlimeSceneThree: React.FC = () => {
                 return;
             }
 
-            // buffers before texture
-            allocBuffers(sceneSize.width, sceneSize.height);
+            const { width, height, displayWidth, displayHeight } = sceneSize;
+
+            // buffers use render size (capped at 1920x1080)
+            allocBuffers(width, height);
 
             const renderer = new THREE.WebGLRenderer({
                 antialias: false,
             });
-            renderer.setSize(sceneSize.width, sceneSize.height);
+            // Render at scaled resolution
+            renderer.setSize(width, height);
             renderer.setPixelRatio(1);
-            containerRef.current.appendChild(renderer.domElement);
+
+            // Scale canvas to fill display size via CSS
+            const canvas = renderer.domElement;
+            canvas.style.width = `${displayWidth}px`;
+            canvas.style.height = `${displayHeight}px`;
+
+            containerRef.current.appendChild(canvas);
 
             const scene = new THREE.Scene();
             scene.matrixAutoUpdate = false;
@@ -406,8 +453,9 @@ const SlimeSceneThree: React.FC = () => {
                 THREE.UnsignedByteType
             );
             tex.needsUpdate = true;
-            tex.magFilter = THREE.NearestFilter;
-            tex.minFilter = THREE.NearestFilter;
+            // Use linear filtering for smoother upscaling on large displays
+            tex.magFilter = THREE.LinearFilter;
+            tex.minFilter = THREE.LinearFilter;
             tex.generateMipmaps = false;
             tex.flipY = false;
 
@@ -490,16 +538,16 @@ const SlimeSceneThree: React.FC = () => {
             const mouse = { x: 0, y: 0, down: false, size: REPULSION.minRadiusPercent };
 
             const canvas = rendererRef.current.domElement;
+            const { width, height, scale } = sceneSize;
+
             const handleMouseMove = (e: PointerEvent) => {
-                mouse.x = e.offsetX;
-                mouse.y = sceneSize.height - e.offsetY;
+                // Convert display coordinates to render coordinates
+                mouse.x = e.offsetX * scale;
+                mouse.y = height - e.offsetY * scale;
             };
             const handleMouseDown = () => {
                 mouse.down =
-                    mouse.x > 0 &&
-                    mouse.y > 0 &&
-                    mouse.x < sceneSize.width &&
-                    mouse.y < sceneSize.height;
+                    mouse.x > 0 && mouse.y > 0 && mouse.x < width && mouse.y < height;
             };
             const handleMouseUp = () => {
                 mouse.down = false;
@@ -624,16 +672,83 @@ const SlimeSceneThree: React.FC = () => {
             ) => {
                 const lut32 = getHueLUT32();
                 const decay256 = cfg.decay256;
+                const len = trails.length;
+                const zeroColor = lut32[0];
+                const needsFloorFix = decay256 < 256;
 
-                for (let i = 0; i < trails.length; i++) {
-                    const oldI = trails[i];
-                    let newI = (oldI * decay256) >> 8;
-                    if (newI === oldI && oldI > 0 && decay256 < 256) {
-                        newI = oldI - 1;
+                // Process 4 pixels at a time for better CPU cache utilization
+                const len4 = len - (len % 4);
+                let i = 0;
+
+                for (; i < len4; i += 4) {
+                    // Pixel 0
+                    let oldI = trails[i];
+                    if (oldI === 0) {
+                        rgba32[i] = zeroColor;
+                    } else {
+                        let newI = (oldI * decay256) >> 8;
+                        if (needsFloorFix && newI === oldI) {
+                            newI = oldI - 1;
+                        }
+                        trails[i] = newI;
+                        rgba32[i] = lut32[newI];
                     }
-                    trails[i] = newI;
-                    rgba32[i] = lut32[newI]; // single 32-bit write
+
+                    // Pixel 1
+                    oldI = trails[i + 1];
+                    if (oldI === 0) {
+                        rgba32[i + 1] = zeroColor;
+                    } else {
+                        let newI = (oldI * decay256) >> 8;
+                        if (needsFloorFix && newI === oldI) {
+                            newI = oldI - 1;
+                        }
+                        trails[i + 1] = newI;
+                        rgba32[i + 1] = lut32[newI];
+                    }
+
+                    // Pixel 2
+                    oldI = trails[i + 2];
+                    if (oldI === 0) {
+                        rgba32[i + 2] = zeroColor;
+                    } else {
+                        let newI = (oldI * decay256) >> 8;
+                        if (needsFloorFix && newI === oldI) {
+                            newI = oldI - 1;
+                        }
+                        trails[i + 2] = newI;
+                        rgba32[i + 2] = lut32[newI];
+                    }
+
+                    // Pixel 3
+                    oldI = trails[i + 3];
+                    if (oldI === 0) {
+                        rgba32[i + 3] = zeroColor;
+                    } else {
+                        let newI = (oldI * decay256) >> 8;
+                        if (needsFloorFix && newI === oldI) {
+                            newI = oldI - 1;
+                        }
+                        trails[i + 3] = newI;
+                        rgba32[i + 3] = lut32[newI];
+                    }
                 }
+
+                // Handle remaining pixels
+                for (; i < len; i++) {
+                    const oldI = trails[i];
+                    if (oldI === 0) {
+                        rgba32[i] = zeroColor;
+                    } else {
+                        let newI = (oldI * decay256) >> 8;
+                        if (needsFloorFix && newI === oldI) {
+                            newI = oldI - 1;
+                        }
+                        trails[i] = newI;
+                        rgba32[i] = lut32[newI];
+                    }
+                }
+
                 tex.needsUpdate = true;
             };
 
