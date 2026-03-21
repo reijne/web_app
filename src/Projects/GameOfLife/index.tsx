@@ -12,8 +12,8 @@ import { cellKey, parseKey, useGameOfLife } from './useGameOfLife';
 
 const CELL_SIZE = 12;
 const GRID_COLOR = '#000';
-const CELL_COLOR = '#dc143c'; // green
-const PREVIEW_COLOR = '#f08080'; // light-green
+const CELL_COLOR = '#dc143c';
+const PREVIEW_COLOR = '#f08080';
 const BACKGROUND_COLOR = '#fff';
 const PREVIEW_CELL_SIZE = 4;
 const PREVIEW_BG_COLOR = '#fff';
@@ -297,6 +297,16 @@ const GameOfLife = () => {
                     onClick={() => setSelectedPattern(null)}
                 >
                     <div className="single-cell-preview" />
+                    <PatternPreview
+                        pattern={{
+                            id: 'single',
+                            name: 'Single',
+                            category: 'still',
+                            cells: [[0, 0]],
+                            width: 1,
+                            height: 1,
+                        }}
+                    />
                     <span>Single Cell</span>
                 </button>
 
