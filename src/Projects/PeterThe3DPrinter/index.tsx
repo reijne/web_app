@@ -12,7 +12,6 @@ interface Filament {
     weight?: number;
 }
 
-// Sample filament data - replace with your actual filaments
 const FILAMENTS: Filament[] = [
     { material: 'PLA', color: 'Black', hexColor: '#1a1a1a' },
     { material: 'PLA', color: 'Light Gray', hexColor: '#d2d4d6' },

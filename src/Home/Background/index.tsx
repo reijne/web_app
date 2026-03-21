@@ -59,6 +59,12 @@ const STEER = {
     damping: 0.995, // mild damping so velocities don't explode over time
 };
 
+const WANDER = {
+    jitter: 0.01, // random velocity nudge strength per frame
+    turnChance: 0.02, // probability of a sudden direction change per frame
+    turnStrength: 0.2, // magnitude of sudden turn
+};
+
 const Background: React.FC = () => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const particlesRef = useRef<Particle[]>([]);
@@ -136,13 +142,25 @@ const Background: React.FC = () => {
                     // Steering = (desired - current) * force
                     particle.vx += (desiredVx - particle.vx) * STEER.force;
                     particle.vy += (desiredVy - particle.vy) * STEER.force;
+                } else {
+                    // Random wandering when mouse is not down
+                    // Small continuous jitter
+                    particle.vx += (Math.random() - 0.5) * WANDER.jitter;
+                    particle.vy += (Math.random() - 0.5) * WANDER.jitter;
+
+                    // Occasional sudden direction change
+                    if (Math.random() < WANDER.turnChance) {
+                        const angle = Math.random() * Math.PI * 2;
+                        particle.vx += Math.cos(angle) * WANDER.turnStrength;
+                        particle.vy += Math.sin(angle) * WANDER.turnStrength;
+                    }
                 }
 
                 // Mild damping always (prevents runaway speeds)
                 particle.vx *= STEER.damping;
                 particle.vy *= STEER.damping;
 
-                let speed = Math.sqrt(particle.vx * particle.vx + particle.vy * particle.vy);
+                const speed = Math.sqrt(particle.vx * particle.vx + particle.vy * particle.vy);
 
                 if (speed < STEER.minSpeed) {
                     const scale = STEER.minSpeed / (speed || 1);
