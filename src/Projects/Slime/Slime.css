@@ -200,34 +200,3 @@
         font-size: larger;
     }
 }
-
-/* Mobile styles */
-@media (max-width: 767px) {
-    .slime-container {
-        & .controls {
-            flex-wrap: wrap;
-        }
-
-        & .config-panel {
-            overflow-x: auto;
-            justify-content: flex-start;
-            margin: 0;
-        }
-
-        & .labeled-input {
-            min-width: 70px;
-            padding: 0 0.25rem;
-
-            --diameter: 1.5rem; /* Larger touch target for slider thumb */
-
-            & .slider {
-                min-height: var(--touch-target-min);
-            }
-        }
-
-        & .click-action-wrapper {
-            flex-direction: row;
-            gap: 0.25rem;
-        }
-    }
-}

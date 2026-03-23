@@ -206,10 +206,9 @@ const GameOfLife = () => {
         [cellSize, viewportOffset]
     );
 
-    // Handle canvas pointer down (click/tap)
-    const handlePointerDown = useCallback(
-        (e: React.PointerEvent<HTMLCanvasElement>) => {
-            e.preventDefault(); // Prevent scrolling on touch
+    // Handle canvas click
+    const handleCanvasClick = useCallback(
+        (e: React.MouseEvent<HTMLCanvasElement>) => {
             const rect = canvasRef.current?.getBoundingClientRect();
             if (!rect) {
                 return;
@@ -228,25 +227,25 @@ const GameOfLife = () => {
         [selectedPattern, screenToGrid, placePattern, toggleCell]
     );
 
-    // Handle pointer move for hover preview
-    const handlePointerMove = useCallback(
-        (e: React.PointerEvent<HTMLCanvasElement>) => {
+    // Handle mouse move for hover preview
+    const handleMouseMove = useCallback(
+        (e: React.MouseEvent<HTMLCanvasElement>) => {
             const rect = canvasRef.current?.getBoundingClientRect();
             if (!rect) {
                 return;
             }
 
-            const pointerX = e.clientX - rect.left;
-            const pointerY = e.clientY - rect.top;
-            const gridPos = screenToGrid(pointerX, pointerY);
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            const gridPos = screenToGrid(mouseX, mouseY);
 
             setHoverPos(gridPos);
         },
         [screenToGrid]
     );
 
-    // Handle pointer leave
-    const handlePointerLeave = useCallback(() => {
+    // Handle mouse leave
+    const handleMouseLeave = useCallback(() => {
         setHoverPos(null);
     }, []);
 
@@ -371,10 +370,9 @@ const GameOfLife = () => {
                 <div className="canvas-wrapper" ref={containerRef}>
                     <canvas
                         ref={canvasRef}
-                        onPointerDown={handlePointerDown}
-                        onPointerMove={handlePointerMove}
-                        onPointerLeave={handlePointerLeave}
-                        style={{ touchAction: 'none' }}
+                        onClick={handleCanvasClick}
+                        onMouseMove={handleMouseMove}
+                        onMouseLeave={handleMouseLeave}
                     />
                 </div>
                 <div

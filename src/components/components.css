@@ -94,25 +94,3 @@
     }
     z-index: 100;
 }
-
-/* Mobile styles */
-@media (max-width: 767px) {
-    .cookie-banner {
-        flex-direction: column;
-        left: 1rem;
-        right: 1rem;
-        bottom: 1rem;
-        padding: 1rem;
-        text-align: center;
-        gap: 1rem;
-
-        & button {
-            margin: 0;
-            width: 100%;
-        }
-    }
-
-    .derp-smiley {
-        bottom: 5rem; /* Move above cookie banner */
-    }
-}

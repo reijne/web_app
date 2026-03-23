@@ -20,18 +20,3 @@
         flex-grow: 1;
     }
 }
-
-/* Mobile styles */
-@media (max-width: 767px) {
-    .footer {
-        padding: 0.5rem;
-
-        & .hash {
-            display: none;
-        }
-
-        & .socials {
-            gap: 0.5rem;
-        }
-    }
-}

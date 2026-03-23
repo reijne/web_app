@@ -1,9 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-import { faChevronDown } from '@fortawesome/free-solid-svg-icons/faChevronDown';
-import { faChevronUp } from '@fortawesome/free-solid-svg-icons/faChevronUp';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-
 import './Pong.css';
 
 function useFrameTime() {
@@ -20,14 +16,9 @@ function useFrameTime() {
     return frameTime;
 }
 
-interface TouchControls {
-    p1: number;
-    p2: number;
-}
-
-function getPlayerMovement(pressedKeys: Set<string>, touchControls: TouchControls) {
-    let p1 = touchControls.p1;
-    let p2 = touchControls.p2;
+function getPlayerMovement(pressedKeys: Set<string>) {
+    let p1 = 0;
+    let p2 = 0;
     if (pressedKeys.has('w')) {
         p1 -= 1;
     }
@@ -49,7 +40,6 @@ const Pong: React.FC = () => {
     const [player1Y, setPlayer1Y] = useState(150);
     const [player2Y, setPlayer2Y] = useState(150);
     const pressedKeys = useRef<Set<string>>(new Set());
-    const touchControls = useRef<TouchControls>({ p1: 0, p2: 0 });
     const [ballX, setBallX] = useState(400);
     const [ballY, setBallY] = useState(200);
     const [ballVelocityX, setBallVelocityX] = useState(4);
@@ -101,7 +91,7 @@ const Pong: React.FC = () => {
         setLastFrameTime(frameTime);
 
         // Update player positions based on move
-        const { p1, p2 } = getPlayerMovement(pressedKeys.current, touchControls.current);
+        const { p1, p2 } = getPlayerMovement(pressedKeys.current);
 
         setPlayer1Y((y) =>
             Math.max(Math.min(y + p1 * paddleMovespeed * deltaTime, canvasHeight - paddleHeight), 0)
@@ -193,67 +183,18 @@ const Pong: React.FC = () => {
         setBallVelocityY((Math.random() > 0.5 ? 1 : -1) * defaultBallVelocity);
     };
 
-    // Touch control handlers
-    const handleTouchStart = (player: 'p1' | 'p2', direction: number) => {
-        touchControls.current[player] = direction;
-    };
-
-    const handleTouchEnd = (player: 'p1' | 'p2') => {
-        touchControls.current[player] = 0;
-    };
-
     return (
         <div className="Pong-container">
-            <div className="Pong-game-area">
-                {/* Touch controls for Player 1 (left side) */}
-                <div className="touch-controls touch-controls-left hide-desktop">
-                    <button
-                        className="touch-btn purple"
-                        onPointerDown={() => handleTouchStart('p1', -1)}
-                        onPointerUp={() => handleTouchEnd('p1')}
-                        onPointerLeave={() => handleTouchEnd('p1')}
-                    >
-                        <FontAwesomeIcon icon={faChevronUp} />
-                    </button>
-                    <button
-                        className="touch-btn purple"
-                        onPointerDown={() => handleTouchStart('p1', 1)}
-                        onPointerUp={() => handleTouchEnd('p1')}
-                        onPointerLeave={() => handleTouchEnd('p1')}
-                    >
-                        <FontAwesomeIcon icon={faChevronDown} />
-                    </button>
-                </div>
-
+            <div>
                 <canvas
                     className="Pong-canvas"
                     ref={canvasRef}
                     width={canvasWidth}
                     height={canvasHeight}
                 />
-
-                {/* Touch controls for Player 2 (right side) */}
-                <div className="touch-controls touch-controls-right hide-desktop">
-                    <button
-                        className="touch-btn orange"
-                        onPointerDown={() => handleTouchStart('p2', -1)}
-                        onPointerUp={() => handleTouchEnd('p2')}
-                        onPointerLeave={() => handleTouchEnd('p2')}
-                    >
-                        <FontAwesomeIcon icon={faChevronUp} />
-                    </button>
-                    <button
-                        className="touch-btn orange"
-                        onPointerDown={() => handleTouchStart('p2', 1)}
-                        onPointerUp={() => handleTouchEnd('p2')}
-                        onPointerLeave={() => handleTouchEnd('p2')}
-                    >
-                        <FontAwesomeIcon icon={faChevronDown} />
-                    </button>
-                </div>
             </div>
 
-            <div className="Pong-instructions hide-mobile">
+            <div>
                 <p>
                     <strong>Player 1:</strong> W (Up), S (Down) | <strong>Player 2:</strong> Up
                     Arrow (Up), Down Arrow (Down)

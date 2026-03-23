@@ -150,13 +150,10 @@ const ColorWheel: React.FC = () => {
 
     useEffect(() => {
         // Calculate canvas size as % of the window's width
-        // Use larger multiplier on mobile for easier interaction
         const handleResize = () => {
-            const isMobile = window.innerWidth < 768;
-            const multiplier = isMobile ? 0.4 : SIZE_MULTIPLIER;
             const size = Math.min(
-                window.innerWidth * multiplier,
-                window.innerHeight * multiplier
+                window.innerWidth * SIZE_MULTIPLIER,
+                window.innerHeight * SIZE_MULTIPLIER
             );
             setCanvasSize(size);
         };
@@ -175,23 +172,26 @@ const ColorWheel: React.FC = () => {
         }
     }, [canvasSize]);
 
-    const handlePointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
-        event.preventDefault();
-        isDragging.current = true;
-        selectColorAtPointerPosition(event);
+    const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
+        selectColorAtMousePosition(event);
     };
 
-    const handlePointerMove = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    const handleMouseDown = (event: React.MouseEvent<HTMLCanvasElement>) => {
+        isDragging.current = true;
+        selectColorAtMousePosition(event);
+    };
+
+    const handleMouseMove = (event: React.MouseEvent<HTMLCanvasElement>) => {
         if (isDragging.current) {
-            selectColorAtPointerPosition(event);
+            selectColorAtMousePosition(event);
         }
     };
 
-    const handlePointerUp = () => {
+    const handleMouseUp = () => {
         isDragging.current = false;
     };
 
-    const selectColorAtPointerPosition = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    const selectColorAtMousePosition = (event: React.MouseEvent<HTMLCanvasElement>) => {
         if (canvasRef.current) {
             const rect = canvasRef.current.getBoundingClientRect();
             const x = event.clientX - rect.left;
@@ -218,11 +218,12 @@ const ColorWheel: React.FC = () => {
             >
                 <canvas
                     ref={canvasRef}
-                    onPointerDown={handlePointerDown}
-                    onPointerMove={handlePointerMove}
-                    onPointerUp={handlePointerUp}
-                    onPointerLeave={handlePointerUp}
-                    style={{ borderRadius: '50%', cursor: 'pointer', touchAction: 'none' }}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseUp}
+                    onClick={handleCanvasClick}
+                    style={{ borderRadius: '50%', cursor: 'pointer' }}
                 />
                 {selectedPosition && (
                     <div

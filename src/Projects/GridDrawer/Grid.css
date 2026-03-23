@@ -88,28 +88,3 @@
         }
     }
 }
-
-/* Mobile styles */
-@media (max-width: 767px) {
-    .grid-container {
-        & .grid-node {
-            width: 36px;
-            height: 36px;
-            margin: 6px;
-        }
-
-        & .controls {
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 0.5rem;
-            padding: 0.5rem;
-            margin-top: 0.5rem;
-        }
-
-        & .grid-size-input input {
-            min-height: var(--touch-target-min);
-            width: 60px;
-            font-size: 16px; /* Prevent iOS zoom on focus */
-        }
-    }
-}
