@@ -14,6 +14,10 @@ body {
     --background-color: white;
     --border-color: black;
 
+    /* Mobile breakpoints and touch */
+    --bp-mobile: 768px;
+    --touch-target-min: 44px;
+
     --purple: #6a5acd /* slateblue */;
     --light-purple: color-mix(in srgb, var(--purple) 45%, white);
 
@@ -155,4 +159,27 @@ body {
 
 .gap-1 {
     gap: 0.25rem;
+}
+
+/* Touch device utilities */
+* {
+    -webkit-tap-highlight-color: transparent;
+}
+
+.touch-none {
+    touch-action: none;
+}
+
+/* Hide elements on mobile */
+@media (max-width: 767px) {
+    .hide-mobile {
+        display: none !important;
+    }
+}
+
+/* Hide elements on desktop */
+@media (min-width: 768px) {
+    .hide-desktop {
+        display: none !important;
+    }
 }

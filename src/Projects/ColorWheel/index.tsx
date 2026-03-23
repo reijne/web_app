@@ -150,10 +150,13 @@ const ColorWheel: React.FC = () => {
 
     useEffect(() => {
         // Calculate canvas size as % of the window's width
+        // Use larger multiplier on mobile for easier interaction
         const handleResize = () => {
+            const isMobile = window.innerWidth < 768;
+            const multiplier = isMobile ? 0.4 : SIZE_MULTIPLIER;
             const size = Math.min(
-                window.innerWidth * SIZE_MULTIPLIER,
-                window.innerHeight * SIZE_MULTIPLIER
+                window.innerWidth * multiplier,
+                window.innerHeight * multiplier
             );
             setCanvasSize(size);
         };
@@ -172,26 +175,23 @@ const ColorWheel: React.FC = () => {
         }
     }, [canvasSize]);
 
-    const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
-        selectColorAtMousePosition(event);
-    };
-
-    const handleMouseDown = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    const handlePointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
+        event.preventDefault();
         isDragging.current = true;
-        selectColorAtMousePosition(event);
+        selectColorAtPointerPosition(event);
     };
 
-    const handleMouseMove = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    const handlePointerMove = (event: React.PointerEvent<HTMLCanvasElement>) => {
         if (isDragging.current) {
-            selectColorAtMousePosition(event);
+            selectColorAtPointerPosition(event);
         }
     };
 
-    const handleMouseUp = () => {
+    const handlePointerUp = () => {
         isDragging.current = false;
     };
 
-    const selectColorAtMousePosition = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    const selectColorAtPointerPosition = (event: React.PointerEvent<HTMLCanvasElement>) => {
         if (canvasRef.current) {
             const rect = canvasRef.current.getBoundingClientRect();
             const x = event.clientX - rect.left;
@@ -218,12 +218,11 @@ const ColorWheel: React.FC = () => {
             >
                 <canvas
                     ref={canvasRef}
-                    onMouseDown={handleMouseDown}
-                    onMouseMove={handleMouseMove}
-                    onMouseUp={handleMouseUp}
-                    onMouseLeave={handleMouseUp}
-                    onClick={handleCanvasClick}
-                    style={{ borderRadius: '50%', cursor: 'pointer' }}
+                    onPointerDown={handlePointerDown}
+                    onPointerMove={handlePointerMove}
+                    onPointerUp={handlePointerUp}
+                    onPointerLeave={handlePointerUp}
+                    style={{ borderRadius: '50%', cursor: 'pointer', touchAction: 'none' }}
                 />
                 {selectedPosition && (
                     <div

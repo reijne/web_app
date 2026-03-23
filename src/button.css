@@ -10,12 +10,24 @@ button {
         cursor: not-allowed;
     }
     &:not(:disabled) {
-        &:hover {
-            background: color-mix(in srgb, var(--background-color) 90%, white);
-        }
         &:active {
             background: var(--background-color);
         }
+    }
+}
+
+/* Only apply hover styles on devices that support hover */
+@media (hover: hover) {
+    button:not(:disabled):hover {
+        background: color-mix(in srgb, var(--background-color) 90%, white);
+    }
+}
+
+/* Ensure touch-friendly button sizes on mobile */
+@media (max-width: 767px) {
+    button {
+        min-height: var(--touch-target-min);
+        padding: 0.5rem 0.75rem;
     }
 }
 

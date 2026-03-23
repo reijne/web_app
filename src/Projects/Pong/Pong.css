@@ -4,22 +4,64 @@
     flex-direction: column;
     justify-content: center;
     align-items: center;
+    padding: 1rem;
+}
+
+.Pong-game-area {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .Pong-canvas {
     background-color: black;
     border: 1px solid var(--border-color);
+    max-width: 100%;
+    height: auto;
+}
 
-    & canvas {
-        display: block;
-        margin: 0 auto;
-        background-color: black;
-    }
+.Pong-instructions {
+    margin-top: 1rem;
 }
 
 .Pong-reset-score-button {
     background-color: var(--blue);
-    margin-top: 2rem;
+    margin-top: 1rem;
     padding: 10px 20px;
     font-size: 1.2rem;
+}
+
+/* Touch controls */
+.touch-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.touch-btn {
+    width: 60px;
+    height: 70px;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* Mobile styles */
+@media (max-width: 767px) {
+    .Pong-container {
+        padding: 0.5rem;
+    }
+
+    .Pong-canvas {
+        max-width: calc(100vw - 140px); /* Account for touch controls */
+    }
+
+    .touch-btn {
+        width: 50px;
+        height: 60px;
+    }
 }

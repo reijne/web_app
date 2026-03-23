@@ -2,12 +2,14 @@ import React, { Suspense, useEffect, useState } from 'react';
 
 import { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import { faBacterium } from '@fortawesome/free-solid-svg-icons/faBacterium';
+import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
 import { faBorderAll } from '@fortawesome/free-solid-svg-icons/faBorderAll';
 import { faCircle } from '@fortawesome/free-solid-svg-icons/faCircle';
 import { faCube } from '@fortawesome/free-solid-svg-icons/faCube';
 import { faHouse } from '@fortawesome/free-solid-svg-icons/faHouse';
 import { faNewspaper } from '@fortawesome/free-solid-svg-icons/faNewspaper';
 import { faTableTennisPaddleBall } from '@fortawesome/free-solid-svg-icons/faTableTennisPaddleBall';
+import { faTimes } from '@fortawesome/free-solid-svg-icons/faTimes';
 import { faVirus } from '@fortawesome/free-solid-svg-icons/faVirus';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
@@ -80,6 +82,7 @@ function Projects({
     navigate: (destination: string) => void;
 }) {
     const [selectedProject, setSelectedProject] = useState<ProjectName>(projectFromUrl);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     // Determine if this is needed.
     useEffect(() => {
@@ -89,14 +92,38 @@ function Projects({
     const handleProjectSelect = (project: ProjectName) => {
         navigate(`/projects/${project}`);
         setSelectedProject(project);
+        setIsMobileMenuOpen(false); // Close menu on navigation
+    };
+
+    const handleNavigateHome = () => {
+        navigate('');
+        setIsMobileMenuOpen(false);
     };
 
     return (
         <div className="projects-container">
+            {/* Mobile hamburger button */}
+            <button
+                className="hamburger-button hide-desktop"
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
+            >
+                <FontAwesomeIcon icon={isMobileMenuOpen ? faTimes : faBars} />
+            </button>
+
+            {/* Backdrop for closing menu */}
+            {isMobileMenuOpen && (
+                <div
+                    className="sidebar-backdrop hide-desktop"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                />
+            )}
+
             <Sidebar
                 selectedProject={selectedProject}
                 handleProjectSelect={handleProjectSelect}
-                navigate={navigate}
+                navigate={handleNavigateHome}
+                isOpen={isMobileMenuOpen}
             />
             <Suspense fallback={<Loading />} key={selectedProject}>
                 <div className="projects-content">{PROJECT_MAPPING[selectedProject]}</div>
@@ -108,10 +135,11 @@ function Projects({
 interface SidebarProps {
     selectedProject: ProjectName | null;
     handleProjectSelect: (project: ProjectName) => void;
-    navigate: (destination: string) => void;
+    navigate: () => void;
+    isOpen: boolean;
 }
 
-function Sidebar({ selectedProject, handleProjectSelect, navigate }: SidebarProps) {
+function Sidebar({ selectedProject, handleProjectSelect, navigate, isOpen }: SidebarProps) {
     const renderSelectProjectButton = (project: Project) => (
         <button
             key={project.name}
@@ -124,8 +152,8 @@ function Sidebar({ selectedProject, handleProjectSelect, navigate }: SidebarProp
     );
 
     return (
-        <div className="sidebar">
-            <button onClick={() => navigate('')} className="link home-link purple">
+        <div className={`sidebar ${isOpen ? 'open' : ''}`}>
+            <button onClick={navigate} className="link home-link purple">
                 <FontAwesomeIcon className="icon" icon={faHouse} />
                 <span className="label">Home</span>
             </button>

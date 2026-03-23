@@ -1,3 +1,10 @@
+/* Hide keyboard hints on touch devices (no physical keyboard) */
+@media (pointer: coarse) {
+    kbd {
+        display: none !important;
+    }
+}
+
 kbd {
     /* Match the page defaults in light mode but */
     /* switch to a light-ish grey in dark mode */
@@ -43,10 +50,13 @@ kbd {
     position: relative;
     top: -1px;
 
-    /* This is my favourite part of the whole thing. The key gets*/
-    /* "pushed" down and the shadow gets reduced so it looks like*/
-    /* it might when typing on a physical keyboard.*/
-    &:hover {
+}
+
+/* This is my favourite part of the whole thing. The key gets*/
+/* "pushed" down and the shadow gets reduced so it looks like*/
+/* it might when typing on a physical keyboard.*/
+@media (hover: hover) {
+    kbd:hover {
         box-shadow: 0 1px 0 0.5px var(--border-color) !important;
         top: 1px !important;
     }
