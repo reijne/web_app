@@ -87,6 +87,8 @@ const GameOfLife = () => {
     const [viewportOffset] = useState({ x: 0, y: 0 });
     const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
     const [cellSize, setCellSize] = useState(DEFAULT_cellSize);
+    const [sidebarWidth, setSidebarWidth] = useState<number | null>(null);
+    const [isResizing, setIsResizing] = useState(false);
 
     // Handle canvas resize
     useEffect(() => {
@@ -278,6 +280,40 @@ const GameOfLife = () => {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [isRunning, play, pause, step, clear]);
 
+    // Handle sidebar resize
+    const handleResizeStart = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        setIsResizing(true);
+    }, []);
+
+    useEffect(() => {
+        if (!isResizing) {
+            return;
+        }
+
+        const handleMouseMove = (e: MouseEvent) => {
+            const containerRect = containerRef.current?.parentElement?.getBoundingClientRect();
+            if (!containerRect) {
+                return;
+            }
+
+            const newWidth = containerRect.right - e.clientX;
+            setSidebarWidth(Math.max(100, Math.min(400, newWidth)));
+        };
+
+        const handleMouseUp = () => {
+            setIsResizing(false);
+        };
+
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleMouseUp);
+
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isResizing]);
+
     // Render pattern library
     const renderPatternLibrary = () => {
         const patternsByCategory = CATEGORIES.map((category) => ({
@@ -287,7 +323,10 @@ const GameOfLife = () => {
         }));
 
         return (
-            <div className="pattern-library">
+            <div
+                className="pattern-library"
+                style={sidebarWidth !== null ? { width: sidebarWidth } : undefined}
+            >
                 <button
                     className={`pattern-button single-cell ${selectedPattern === null ? 'selected' : ''}`}
                     onClick={() => setSelectedPattern(null)}
@@ -336,6 +375,10 @@ const GameOfLife = () => {
                         onMouseLeave={handleMouseLeave}
                     />
                 </div>
+                <div
+                    className={`resize-handle ${isResizing ? 'resizing' : ''}`}
+                    onMouseDown={handleResizeStart}
+                />
                 {renderPatternLibrary()}
             </div>
 
