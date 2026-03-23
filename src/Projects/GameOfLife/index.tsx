@@ -10,12 +10,12 @@ import './GameOfLife.css';
 import { CATEGORIES, CATEGORY_LABELS, PATTERNS, Pattern } from './patterns';
 import { cellKey, parseKey, useGameOfLife } from './useGameOfLife';
 
-const CELL_SIZE = 12;
+const DEFAULT_cellSize = 12;
 const GRID_COLOR = '#000';
 const CELL_COLOR = '#dc143c';
 const PREVIEW_COLOR = '#f08080';
 const BACKGROUND_COLOR = '#fff';
-const PREVIEW_CELL_SIZE = 4;
+const PREVIEW_cellSize = 4;
 const PREVIEW_BG_COLOR = '#fff';
 const PREVIEW_CELL_COLOR = '#dc143c';
 
@@ -34,7 +34,7 @@ const PatternPreview = ({ pattern }: { pattern: Pattern }) => {
             return;
         }
 
-        const size = PREVIEW_CELL_SIZE;
+        const size = PREVIEW_cellSize;
         const width = pattern.width * size;
         const height = pattern.height * size;
 
@@ -57,8 +57,8 @@ const PatternPreview = ({ pattern }: { pattern: Pattern }) => {
             ref={canvasRef}
             className="pattern-preview-canvas"
             style={{
-                width: pattern.width * PREVIEW_CELL_SIZE,
-                height: pattern.height * PREVIEW_CELL_SIZE,
+                width: pattern.width * PREVIEW_cellSize,
+                height: pattern.height * PREVIEW_cellSize,
             }}
         />
     );
@@ -86,6 +86,7 @@ const GameOfLife = () => {
     const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
     const [viewportOffset] = useState({ x: 0, y: 0 });
     const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
+    const [cellSize, setCellSize] = useState(DEFAULT_cellSize);
 
     // Handle canvas resize
     useEffect(() => {
@@ -136,17 +137,17 @@ const GameOfLife = () => {
         ctx.strokeStyle = GRID_COLOR;
         ctx.lineWidth = 0.5;
 
-        const startX = -(viewportOffset.x % CELL_SIZE);
-        const startY = -(viewportOffset.y % CELL_SIZE);
+        const startX = -(viewportOffset.x % cellSize);
+        const startY = -(viewportOffset.y % cellSize);
 
-        for (let x = startX; x < width; x += CELL_SIZE) {
+        for (let x = startX; x < width; x += cellSize) {
             ctx.beginPath();
             ctx.moveTo(x, 0);
             ctx.lineTo(x, height);
             ctx.stroke();
         }
 
-        for (let y = startY; y < height; y += CELL_SIZE) {
+        for (let y = startY; y < height; y += cellSize) {
             ctx.beginPath();
             ctx.moveTo(0, y);
             ctx.lineTo(width, y);
@@ -157,16 +158,11 @@ const GameOfLife = () => {
         ctx.fillStyle = CELL_COLOR;
         Array.from(cells).forEach((key) => {
             const [cellX, cellY] = parseKey(key);
-            const screenX = cellX * CELL_SIZE - viewportOffset.x;
-            const screenY = cellY * CELL_SIZE - viewportOffset.y;
+            const screenX = cellX * cellSize - viewportOffset.x;
+            const screenY = cellY * cellSize - viewportOffset.y;
 
-            if (
-                screenX > -CELL_SIZE &&
-                screenX < width &&
-                screenY > -CELL_SIZE &&
-                screenY < height
-            ) {
-                ctx.fillRect(screenX + 1, screenY + 1, CELL_SIZE - 2, CELL_SIZE - 2);
+            if (screenX > -cellSize && screenX < width && screenY > -cellSize && screenY < height) {
+                ctx.fillRect(screenX + 1, screenY + 1, cellSize - 2, cellSize - 2);
             }
         });
 
@@ -184,13 +180,13 @@ const GameOfLife = () => {
 
                 // Only show preview for cells that don't already exist
                 if (!cells.has(key)) {
-                    const screenX = cellX * CELL_SIZE - viewportOffset.x;
-                    const screenY = cellY * CELL_SIZE - viewportOffset.y;
-                    ctx.fillRect(screenX + 1, screenY + 1, CELL_SIZE - 2, CELL_SIZE - 2);
+                    const screenX = cellX * cellSize - viewportOffset.x;
+                    const screenY = cellY * cellSize - viewportOffset.y;
+                    ctx.fillRect(screenX + 1, screenY + 1, cellSize - 2, cellSize - 2);
                 }
             }
         }
-    }, [cells, hoverPos, selectedPattern, viewportOffset]);
+    }, [cells, cellSize, hoverPos, selectedPattern, viewportOffset]);
 
     // Render on state changes
     useEffect(() => {
@@ -201,11 +197,11 @@ const GameOfLife = () => {
     const screenToGrid = useCallback(
         (screenX: number, screenY: number): { x: number; y: number } => {
             return {
-                x: Math.floor((screenX + viewportOffset.x) / CELL_SIZE),
-                y: Math.floor((screenY + viewportOffset.y) / CELL_SIZE),
+                x: Math.floor((screenX + viewportOffset.x) / cellSize),
+                y: Math.floor((screenY + viewportOffset.y) / cellSize),
             };
         },
-        [viewportOffset]
+        [cellSize, viewportOffset]
     );
 
     // Handle canvas click
@@ -378,7 +374,24 @@ const GameOfLife = () => {
                     />
                 </div>
 
+                <div className="cell-size-control">
+                    <span className="cell-size-label">Grid Size</span>
+                    <input
+                        type="range"
+                        className="cell-size-slider"
+                        min="4"
+                        max="32"
+                        value={36 - cellSize}
+                        onChange={(e) => setCellSize(36 - Number(e.target.value))}
+                    />
+                </div>
+
                 <div className="generation-display">Gen: {generation}</div>
+
+                <div className="rules-display">
+                    <span>Live cell: 2-3 neighbors to survive</span>
+                    <span>Dead cell: 3 neighbors to birth</span>
+                </div>
             </div>
         </div>
     );

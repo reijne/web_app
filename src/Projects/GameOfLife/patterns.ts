@@ -1,14 +1,75 @@
 export interface Pattern {
     id: string;
     name: string;
-    category: 'still' | 'oscillator' | 'spaceship' | 'methuselah' | 'gun';
+    category: 'still' | 'oscillator' | 'spaceship' | 'methuselah' | 'gun' | 'square';
     cells: [number, number][];
     width: number;
     height: number;
 }
 
-export const PATTERNS: Pattern[] = [
-    // Still Lifes
+// Helper to generate a filled square of size n
+const generateSquare = (n: number): [number, number][] => {
+    const cells: [number, number][] = [];
+    for (let y = 0; y < n; y++) {
+        for (let x = 0; x < n; x++) {
+            cells.push([x, y]);
+        }
+    }
+    return cells;
+};
+
+export const SQUARE_PATTERNS: Pattern[] = [
+    {
+        id: 'square3',
+        name: '3x3',
+        category: 'square',
+        cells: generateSquare(3),
+        width: 3,
+        height: 3,
+    },
+    {
+        id: 'square4',
+        name: '4x4',
+        category: 'square',
+        cells: generateSquare(4),
+        width: 4,
+        height: 4,
+    },
+    {
+        id: 'square8',
+        name: '8x8',
+        category: 'square',
+        cells: generateSquare(8),
+        width: 8,
+        height: 8,
+    },
+    {
+        id: 'square16',
+        name: '16x16',
+        category: 'square',
+        cells: generateSquare(16),
+        width: 16,
+        height: 16,
+    },
+    {
+        id: 'square32',
+        name: '32x32',
+        category: 'square',
+        cells: generateSquare(32),
+        width: 32,
+        height: 32,
+    },
+    {
+        id: 'square64',
+        name: '64x64',
+        category: 'square',
+        cells: generateSquare(64),
+        width: 64,
+        height: 64,
+    },
+];
+
+export const STILL_LIFE_PATTERNS: Pattern[] = [
     {
         id: 'block',
         name: 'Block',
@@ -176,8 +237,9 @@ export const PATTERNS: Pattern[] = [
         width: 4,
         height: 4,
     },
+];
 
-    // Oscillators
+export const OSCILLATOR_PATTERNS: Pattern[] = [
     {
         id: 'blinker',
         name: 'Blinker',
@@ -340,8 +402,9 @@ export const PATTERNS: Pattern[] = [
         width: 6,
         height: 6,
     },
+];
 
-    // Spaceships
+export const SPACESHIP_PATTERNS: Pattern[] = [
     {
         id: 'glider',
         name: 'Glider',
@@ -416,8 +479,9 @@ export const PATTERNS: Pattern[] = [
         width: 7,
         height: 5,
     },
+];
 
-    // Methuselahs
+export const METHUSELAH_PATTERNS: Pattern[] = [
     {
         id: 'rpentomino',
         name: 'R-pentomino',
@@ -514,8 +578,9 @@ export const PATTERNS: Pattern[] = [
         width: 7,
         height: 3,
     },
+];
 
-    // Guns
+export const GUN_PATTERNS: Pattern[] = [
     {
         id: 'gospergun',
         name: 'Gosper Gun',
@@ -567,7 +632,23 @@ export const PATTERNS: Pattern[] = [
     },
 ];
 
-export const CATEGORIES = ['still', 'oscillator', 'spaceship', 'methuselah', 'gun'] as const;
+export const PATTERNS: Pattern[] = [
+    ...STILL_LIFE_PATTERNS,
+    ...OSCILLATOR_PATTERNS,
+    ...SPACESHIP_PATTERNS,
+    ...METHUSELAH_PATTERNS,
+    ...GUN_PATTERNS,
+    ...SQUARE_PATTERNS,
+];
+
+export const CATEGORIES = [
+    'still',
+    'oscillator',
+    'spaceship',
+    'methuselah',
+    'gun',
+    'square',
+] as const;
 
 export const CATEGORY_LABELS: Record<(typeof CATEGORIES)[number], string> = {
     still: 'Still Lifes',
@@ -575,4 +656,5 @@ export const CATEGORY_LABELS: Record<(typeof CATEGORIES)[number], string> = {
     spaceship: 'Spaceships',
     methuselah: 'Methuselahs',
     gun: 'Guns',
+    square: 'Squares',
 };
