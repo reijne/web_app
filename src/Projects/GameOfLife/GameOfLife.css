@@ -37,7 +37,7 @@
 
         &:hover,
         &.resizing {
-            background: var(--red-80);
+            background: var(--light-red);
         }
     }
 
