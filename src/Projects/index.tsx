@@ -31,7 +31,7 @@ const PROJECT_MAPPING = {
     peter: <Peter />,
     brightside: <Brightside />,
     slime: <Slime />,
-    life: <GameOfLife />,
+    gol: <GameOfLife />,
 };
 
 export type ProjectName = keyof typeof PROJECT_MAPPING;
@@ -65,7 +65,7 @@ const PURE_PROJECTS: PureProject[] = [
     { type: 'pure', name: 'grid', label: 'Grid', icon: faBorderAll },
     { type: 'pure', name: 'peter', label: 'Peter', icon: faCube },
     { type: 'pure', name: 'brightside', label: 'Brightside', icon: faNewspaper },
-    { type: 'pure', name: 'life', label: 'Life', icon: faBacterium },
+    { type: 'pure', name: 'gol', label: 'GoL', icon: faBacterium },
 ];
 
 const THREE_PROJECTS: ThreeProject[] = [
