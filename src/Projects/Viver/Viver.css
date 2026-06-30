@@ -1,0 +1,65 @@
+.viver-container {
+    flex: auto;
+    width: 100%;
+    padding: 1rem;
+    overflow: auto;
+    text-align: left;
+}
+
+.viver-header {
+    margin-bottom: 1rem;
+}
+
+.viver-subtitle {
+    color: var(--purple);
+    font-weight: 600;
+}
+
+.viver-doc {
+    margin-bottom: 2rem;
+}
+
+.viver-doc-head {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.viver-doc-actions {
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+}
+
+.viver-link {
+    color: var(--blue);
+    font-weight: 600;
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s ease;
+}
+
+.viver-link:hover {
+    border-bottom-color: var(--purple);
+}
+
+.viver-frame {
+    width: 100%;
+    height: 85vh;
+    background-color: var(--background-color);
+}
+
+@media (max-width: 768px) {
+    .viver-frame {
+        height: 70vh;
+    }
+
+    .viver-doc-head {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+}

@@ -5,6 +5,7 @@ import { faBacterium } from '@fortawesome/free-solid-svg-icons/faBacterium';
 import { faBorderAll } from '@fortawesome/free-solid-svg-icons/faBorderAll';
 import { faCircle } from '@fortawesome/free-solid-svg-icons/faCircle';
 import { faCube } from '@fortawesome/free-solid-svg-icons/faCube';
+import { faFlask } from '@fortawesome/free-solid-svg-icons/faFlask';
 import { faHouse } from '@fortawesome/free-solid-svg-icons/faHouse';
 import { faNewspaper } from '@fortawesome/free-solid-svg-icons/faNewspaper';
 import { faTableTennisPaddleBall } from '@fortawesome/free-solid-svg-icons/faTableTennisPaddleBall';
@@ -22,6 +23,7 @@ const Pong = React.lazy(() => import('./Pong'));
 const Slime = React.lazy(() => import('./Slime'));
 const Brightside = React.lazy(() => import('./Brightside'));
 const GameOfLife = React.lazy(() => import('./GameOfLife'));
+const Viver = React.lazy(() => import('./Viver'));
 
 /** Defines all the projects we have available, and points to the lazy loaded component for it. */
 const PROJECT_MAPPING = {
@@ -32,6 +34,7 @@ const PROJECT_MAPPING = {
     brightside: <Brightside />,
     slime: <Slime />,
     gol: <GameOfLife />,
+    viver: <Viver />,
 };
 
 export type ProjectName = keyof typeof PROJECT_MAPPING;
@@ -66,6 +69,7 @@ const PURE_PROJECTS: PureProject[] = [
     { type: 'pure', name: 'peter', label: 'Peter', icon: faCube },
     { type: 'pure', name: 'brightside', label: 'Brightside', icon: faNewspaper },
     { type: 'pure', name: 'gol', label: 'GoL', icon: faBacterium },
+    { type: 'pure', name: 'viver', label: 'Viver', icon: faFlask },
 ];
 
 const THREE_PROJECTS: ThreeProject[] = [
