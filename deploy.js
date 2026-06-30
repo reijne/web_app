@@ -75,21 +75,10 @@ function invalidateCloudFrontDistribution() {
 
     console.log(`🕒 Waiting for invalidation ${invalidationId} to complete...`);
 
-    // 6. Poll Invalidation Status
-    let invalidationStatus = 'InProgress';
-    while (invalidationStatus === 'InProgress') {
-        const result = execSync(
-            `aws cloudfront get-invalidation --distribution-id ${CLOUDFRONT_DISTRIBUTION_ID} --id ${invalidationId}`,
-            { encoding: 'utf-8' }
-        );
-        invalidationStatus = JSON.parse(result).Invalidation.Status;
-        console.log(`🔄 Invalidation status: ${invalidationStatus}`);
-
-        if (invalidationStatus === 'InProgress') {
-            console.log('⏳ Still in progress... waiting....');
-            execSync('sleep 2');
-        }
-    }
+    execSync(
+        `aws cloudfront wait invalidation-completed --distribution-id ${CLOUDFRONT_DISTRIBUTION_ID} --id ${invalidationId}`,
+        { stdio: 'inherit' }
+    );
 
     console.log(`✅ Invalidation ${invalidationId} completed successfully!`);
     console.log(`🎉 Deployment and invalidation process finished!`);
