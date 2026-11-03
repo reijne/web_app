@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { faArrowRotateRight } from '@fortawesome/free-solid-svg-icons/faArrowRotateRight';
 import { faArrowsToCircle } from '@fortawesome/free-solid-svg-icons/faArrowsToCircle';
@@ -40,34 +40,52 @@ const slimeConfigKeys = [
     'trail',
 ] as const;
 
-// Define FPS limits for scaling the simulation automatically.
-const SIXTY = { min: 55, max: 59 }; // target ~60Hz
-const ONE_TWENTY = { min: 100, max: 115 }; // target ~120Hz
+// ==============
+// Autoscaler: hold a fixed 60fps and spend whatever is left on slimes.
+//
+// Per-frame cost splits in two, and both halves are linear:
+//   pixel work    = decayAndBlit + texture upload, linear in width * height
+//   particle work = updateSlimes + simulateTrailFollowing, linear in count
+//
+// Measuring frame *rate* cannot see this. requestAnimationFrame is vsync-locked,
+// so a frame using 4ms of work and one using 16ms both report 60fps -- the signal
+// saturates and only ever reports failure, never headroom. We measure work time
+// instead, derive a cost per pixel and a cost per particle, and solve the budget.
+// ==============
+const TARGET_FPS = 60;
+const FRAME_BUDGET_MS = 1000 / TARGET_FPS;
+// Headroom for GC, the compositor and general browser overhead.
+const BUDGET_SAFETY = 0.7;
+const WORK_BUDGET_MS = FRAME_BUDGET_MS * BUDGET_SAFETY;
+// Share of the work budget resolution is allowed to claim. The rest buys slimes.
+const PIXEL_SHARE = 0.4;
 
-// If you only want 60 or 120 buckets, keep it simple:
-function bucketHz(measured: number): 60 | 120 {
-    // Anything >= ~100 we'll treat as a 120Hz class display
-    return measured >= 100 ? 120 : 60;
-}
+// Resolution is chosen once per display size and then locked. Changing it means
+// reallocating the trail buffers, which wipes the field and pops visibly.
+const RENDER_SCALE_STEPS = [1, 0.85, 0.7, 0.6, 0.5, 0.4];
+const MIN_RENDER_WIDTH = 640;
 
-// Measure refresh rate quickly (≈ 0.6s)
-function detectDisplayHz(callback: (hz: 60 | 120) => void) {
-    let frames = 0;
-    const start = performance.now();
-    let raf = 0;
-    const sample = () => {
-        frames++;
-        const elapsed = performance.now() - start;
-        if (elapsed < 600) {
-            raf = requestAnimationFrame(sample);
-        } else {
-            const fps = (frames * 1000) / elapsed;
-            callback(bucketHz(fps));
-        }
-    };
-    raf = requestAnimationFrame(sample);
-    return () => cancelAnimationFrame(raf);
-}
+const PARTICLE_FLOOR = 2_000;
+const PARTICLE_CEILING = 250_000;
+// Population used during calibration to measure cost per particle.
+const PROBE_PARTICLES = 5_000;
+
+const CALIBRATION_MS = 2_000;
+const TRACK_WINDOW_MS = 1_000;
+// Asymmetric smoothing. A cost going *up* threatens the 60fps floor, so react
+// fast; a cost going down is only an opportunity, so grow slowly and stay stable.
+// A single symmetric alpha of 0.1 would lag a thermal throttle by ~20s, spending
+// all of it below 60fps.
+const COST_EMA_ALPHA_RISING = 0.5;
+const COST_EMA_ALPHA_FALLING = 0.1;
+// Never derive a cost from a handful of frames. Also covers the gap after a pause
+// or a hidden tab, where the window has aged but almost nothing was measured.
+const MIN_WINDOW_FRAMES = 10;
+// Cap steady-state moves so load changes glide instead of snapping. Asymmetric
+// for the same reason as the EMA above: shrinking defends the 60fps floor and
+// should be allowed to happen quickly, growing is only an optimisation.
+const MAX_GROW_STEP = 0.25;
+const MAX_SHRINK_STEP = 0.5;
 type SlimeConfigKey = (typeof slimeConfigKeys)[number];
 export type SlimeConfig = Record<SlimeConfigKey, ConfigValue>;
 
@@ -87,6 +105,14 @@ const DEFAULT_SLIME_CONFIG: SlimeConfig = {
     sensorDistance: { value: 10, min: 10, max: 100 },
     trail: { value: 0.995, min: 0.97, max: 0.995 },
     ...SessionStorage.slimeConfig.get(),
+};
+
+// Particle count belongs to the autoscaler, so a persisted one is never restored:
+// a session that collapsed would otherwise pin the ceiling low forever.
+DEFAULT_SLIME_CONFIG.slimes = {
+    value: PROBE_PARTICLES,
+    min: PARTICLE_FLOOR,
+    max: PARTICLE_CEILING,
 };
 
 // ===== Evolution for Slime Config =====
@@ -145,21 +171,37 @@ const REPULSION = {
 };
 const COLOR_FADE_SPEED = 0.05;
 
-// Max render resolution to cap pixel processing
+// Hard ceiling on render resolution, independent of the autoscaler.
 const MAX_RENDER_WIDTH = 1920;
 const MAX_RENDER_HEIGHT = 1080;
 
-function calcRenderSize(displayWidth: number, displayHeight: number) {
-    // Scale down if display exceeds max render resolution
-    const scaleX = displayWidth > MAX_RENDER_WIDTH ? MAX_RENDER_WIDTH / displayWidth : 1;
-    const scaleY = displayHeight > MAX_RENDER_HEIGHT ? MAX_RENDER_HEIGHT / displayHeight : 1;
-    const scale = Math.min(scaleX, scaleY);
+function calcRenderSize(displayWidth: number, displayHeight: number, autoScale: number) {
+    // Cap first: never render more than MAX_RENDER_WIDTH x MAX_RENDER_HEIGHT pixels.
+    const capX = displayWidth > MAX_RENDER_WIDTH ? MAX_RENDER_WIDTH / displayWidth : 1;
+    const capY = displayHeight > MAX_RENDER_HEIGHT ? MAX_RENDER_HEIGHT / displayHeight : 1;
+    const cap = Math.min(capX, capY);
+
+    // Then apply the autoscaler's choice, but never below MIN_RENDER_WIDTH.
+    const minScale = Math.min(1, MIN_RENDER_WIDTH / displayWidth);
+    const scale = clamp(cap * autoScale, minScale, 1);
 
     return {
-        renderWidth: Math.floor(displayWidth * scale),
-        renderHeight: Math.floor(displayHeight * scale),
+        renderWidth: Math.max(1, Math.floor(displayWidth * scale)),
+        renderHeight: Math.max(1, Math.floor(displayHeight * scale)),
         scale,
     };
+}
+
+// Largest scale step whose pixel cost fits the pixel share of the work budget.
+function solveRenderScale(displayWidth: number, displayHeight: number, costPerPx: number) {
+    const pixelBudgetMs = WORK_BUDGET_MS * PIXEL_SHARE;
+    for (const step of RENDER_SCALE_STEPS) {
+        const { renderWidth, renderHeight } = calcRenderSize(displayWidth, displayHeight, step);
+        if (renderWidth * renderHeight * costPerPx <= pixelBudgetMs) {
+            return step;
+        }
+    }
+    return RENDER_SCALE_STEPS[RENDER_SCALE_STEPS.length - 1];
 }
 
 // ==============
@@ -256,22 +298,9 @@ const SlimeSceneThree: React.FC = () => {
     const [isEvolving, setIsEvolving] = useState(true);
     const [reset, setReset] = useState(0);
 
-    const [fpsMin, setFpsMin] = useState(SIXTY.min);
-    const [fpsMax, setFpsMax] = useState(SIXTY.max);
-
-    useEffect(() => {
-        // Don't run while tab hidden; your render loop already guards this, so fine.
-        const stop = detectDisplayHz((hz) => {
-            if (hz === 120) {
-                setFpsMin(ONE_TWENTY.min);
-                setFpsMax(ONE_TWENTY.max);
-            } else {
-                setFpsMin(SIXTY.min);
-                setFpsMax(SIXTY.max);
-            }
-        });
-        return stop;
-    }, []);
+    // Render scale chosen by calibration. Held in state because changing it has to
+    // rebuild the buffers and the Three.js scene.
+    const [autoScale, setAutoScale] = useState(1);
 
     // For rendering
     const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -281,17 +310,30 @@ const SlimeSceneThree: React.FC = () => {
         null
     );
 
-    // Data for our 2D logic
-    const [sceneSize, setSceneSize] = useState<{
-        // Display size (actual screen pixels)
-        displayWidth: number;
-        displayHeight: number;
-        // Render size (internal buffer size, capped at 1920x1080)
-        width: number;
-        height: number;
-        // Scale factor to convert display coords to render coords
-        scale: number;
-    } | null>(null);
+    // Display size in CSS pixels, straight from the ResizeObserver.
+    const [displaySize, setDisplaySize] = useState<{ width: number; height: number } | null>(null);
+
+    // Render size derived from the display size and the autoscaler's chosen scale.
+    // useMemo keeps the identity stable, so the scene effects below only re-run when
+    // one of those two actually changes.
+    const sceneSize = useMemo(() => {
+        if (!displaySize) {
+            return null;
+        }
+        const { renderWidth, renderHeight, scale } = calcRenderSize(
+            displaySize.width,
+            displaySize.height,
+            autoScale
+        );
+        return {
+            displayWidth: displaySize.width,
+            displayHeight: displaySize.height,
+            width: renderWidth,
+            height: renderHeight,
+            // Converts display coordinates to render coordinates.
+            scale,
+        };
+    }, [displaySize, autoScale]);
 
     const particlesRef = useRef<SlimeParticle[]>([]);
     const frameRef = useRef(100);
@@ -361,13 +403,17 @@ const SlimeSceneThree: React.FC = () => {
         }
     }
 
-    function resizeParticlesImmediate(newCount: number) {
-        newCount = Math.round(newCount / 100) * 100; // step = 100
-        resizeParticles(newCount);
-        slime.current.slimes.max = newCount; // cap slider to safe ceiling
-        slime.current.slimes.value = newCount; // reflect immediately
-        setSlimeUI({ ...slime.current });
-        cfgDirtyRef.current = true; // config changed
+    // The autoscaler owns the particle count. `max` stays a real ceiling; only
+    // `value` moves. No setState here: the count is not rendered except behind the
+    // `s` toggle, which polls the ref on its own.
+    function applyParticleCount(newCount: number) {
+        const stepped = Math.round(newCount / 100) * 100; // step = 100
+        const clamped = clamp(stepped, PARTICLE_FLOOR, slime.current.slimes.max);
+        if (clamped === slime.current.slimes.value) {
+            return;
+        }
+        resizeParticles(clamped);
+        slime.current.slimes.value = clamped;
     }
 
     useEffect(function resizeHandler() {
@@ -379,19 +425,14 @@ const SlimeSceneThree: React.FC = () => {
             for (const entry of entries) {
                 const { width, height } = entry.contentRect;
                 if (width > 0 && height > 0) {
-                    const displayWidth = Math.floor(width);
-                    const displayHeight = Math.floor(height);
-                    const { renderWidth, renderHeight, scale } = calcRenderSize(
-                        displayWidth,
-                        displayHeight
+                    const next = { width: Math.floor(width), height: Math.floor(height) };
+                    // Bail on an identical size: a fresh object would churn every
+                    // effect keyed on sceneSize, rebuilding the scene for nothing.
+                    setDisplaySize((prev) =>
+                        prev && prev.width === next.width && prev.height === next.height
+                            ? prev
+                            : next
                     );
-                    setSceneSize({
-                        displayWidth,
-                        displayHeight,
-                        width: renderWidth,
-                        height: renderHeight,
-                        scale,
-                    });
                 }
             }
         });
@@ -492,9 +533,6 @@ const SlimeSceneThree: React.FC = () => {
         [reset, sceneSize]
     );
 
-    // mirror count
-    const slimesCount = slime.current.slimes.value;
-
     useEffect(
         function createSlimeTrailAndParticles() {
             if (!sceneSize) {
@@ -504,14 +542,12 @@ const SlimeSceneThree: React.FC = () => {
 
             allocBuffers(width, height);
 
-            const arr = particlesRef.current;
-            if (arr.length === 0) {
-                resizeParticles(slimesCount, width, height);
-            } else if (arr.length !== slimesCount) {
-                resizeParticles(slimesCount, width, height);
-            }
+            // Particle coordinates live in render space, so a resolution change
+            // invalidates them. The trail field is reallocated here anyway.
+            particlesRef.current.length = 0;
+            resizeParticles(slime.current.slimes.value, width, height);
         },
-        [sceneSize, slimesCount, reset]
+        [sceneSize, reset]
     );
 
     // LUT cache by integer hue
@@ -526,7 +562,22 @@ const SlimeSceneThree: React.FC = () => {
         return lutRef.current;
     }
 
-    const fpsRef = useRef({ last: performance.now(), frames: 0, fps: 0 });
+    // Autoscaler state. A ref, so it survives the render-loop effect re-running.
+    // The original bug was exactly this: the loop captured fpsMin/fpsMax in a
+    // closure the effect never refreshed.
+    const ctrlRef = useRef({
+        phase: 'calibrating' as 'calibrating' | 'tracking',
+        // Display size + reset generation the current calibration belongs to.
+        key: '',
+        windowStart: 0,
+        frames: 0,
+        pixMs: 0,
+        partMs: 0,
+        costPerPx: 0,
+        costPerParticle: 0,
+        samples: 0,
+        settled: false,
+    });
 
     useEffect(
         function update() {
@@ -546,8 +597,7 @@ const SlimeSceneThree: React.FC = () => {
                 mouse.y = height - e.offsetY * scale;
             };
             const handleMouseDown = () => {
-                mouse.down =
-                    mouse.x > 0 && mouse.y > 0 && mouse.x < width && mouse.y < height;
+                mouse.down = mouse.x > 0 && mouse.y > 0 && mouse.x < width && mouse.y < height;
             };
             const handleMouseUp = () => {
                 mouse.down = false;
@@ -752,29 +802,96 @@ const SlimeSceneThree: React.FC = () => {
                 tex.needsUpdate = true;
             };
 
-            const ensureFpsLimits = () => {
-                fpsRef.current.frames++;
-                const now = performance.now();
-                if (now - fpsRef.current.last >= 1000) {
-                    fpsRef.current.fps = fpsRef.current.frames;
-                    fpsRef.current.frames = 0;
-                    fpsRef.current.last = now;
+            // Identity of what we calibrated for. Note this keys on the *display*
+            // size, not the render size: the autoscaler changes the render size
+            // itself, and recalibrating on its own output would never settle.
+            const displayKey = `${sceneSize.displayWidth}x${sceneSize.displayHeight}#${reset}`;
+            const pixelCount = width * height;
 
-                    const fps = fpsRef.current.fps;
+            const beginCalibration = (now: number) => {
+                const c = ctrlRef.current;
+                c.phase = 'calibrating';
+                c.key = displayKey;
+                c.windowStart = now;
+                c.frames = 0;
+                c.pixMs = 0;
+                c.partMs = 0;
+                c.costPerPx = 0;
+                c.costPerParticle = 0;
+                c.samples = 0;
+                c.settled = false;
+                applyParticleCount(PROBE_PARTICLES);
+            };
 
-                    // If we're dipping under the lower bound, shrink population a bit
-                    if (fps < fpsMin) {
-                        const next = slime.current.slimes.value * 0.9; // -10%
-                        resizeParticlesImmediate(next);
-                        return;
-                    }
-
-                    // If we're comfortably above the upper bound and we're at the current cap, grow a bit
-                    if (fps > fpsMax && slime.current.slimes.value === slime.current.slimes.max) {
-                        const next = slime.current.slimes.value * 1.1; // +10%
-                        resizeParticlesImmediate(next);
-                    }
+            const ema = (prev: number, next: number, samples: number) => {
+                if (samples === 0) {
+                    return next;
                 }
+                const alpha = next > prev ? COST_EMA_ALPHA_RISING : COST_EMA_ALPHA_FALLING;
+                return prev + (next - prev) * alpha;
+            };
+
+            const autoscale = (partMs: number, pixMs: number, now: number) => {
+                const c = ctrlRef.current;
+
+                // New display size (or a reset): measure from scratch at full scale.
+                if (c.key !== displayKey) {
+                    beginCalibration(now);
+                    return;
+                }
+
+                c.frames++;
+                c.partMs += partMs;
+                c.pixMs += pixMs;
+
+                const windowMs = c.phase === 'calibrating' ? CALIBRATION_MS : TRACK_WINDOW_MS;
+                if (now - c.windowStart < windowMs || c.frames < MIN_WINDOW_FRAMES) {
+                    return;
+                }
+
+                const count = Math.max(1, particlesRef.current.length);
+                c.costPerPx = ema(c.costPerPx, c.pixMs / c.frames / pixelCount, c.samples);
+                c.costPerParticle = ema(c.costPerParticle, c.partMs / c.frames / count, c.samples);
+                c.samples++;
+                c.frames = 0;
+                c.pixMs = 0;
+                c.partMs = 0;
+                c.windowStart = now;
+
+                // A zero cost means the clock gave us nothing usable this window.
+                if (c.costPerPx <= 0 || c.costPerParticle <= 0) {
+                    return;
+                }
+
+                if (c.phase === 'calibrating') {
+                    c.phase = 'tracking';
+                    // Changing the scale rebuilds the scene and re-runs this effect.
+                    // The key is unchanged, so the controller resumes in tracking.
+                    setAutoScale(
+                        solveRenderScale(
+                            sceneSize.displayWidth,
+                            sceneSize.displayHeight,
+                            c.costPerPx
+                        )
+                    );
+                    return;
+                }
+
+                // Resolution is locked now, so slimes get the whole remainder of the
+                // budget -- not just the 1 - PIXEL_SHARE slice. PIXEL_SHARE only ever
+                // decided which scale step to pick.
+                const particleBudgetMs = Math.max(0, WORK_BUDGET_MS - pixelCount * c.costPerPx);
+                const target = particleBudgetMs / c.costPerParticle;
+
+                const current = slime.current.slimes.value;
+                // First solve after calibration jumps straight to the answer; after
+                // that, clamp. A raw spike cannot drive this on its own -- the window
+                // averages at least MIN_WINDOW_FRAMES frames and the EMA smooths again.
+                const next = c.settled
+                    ? clamp(target, current * (1 - MAX_SHRINK_STEP), current * (1 + MAX_GROW_STEP))
+                    : target;
+                c.settled = true;
+                applyParticleCount(next);
             };
 
             const renderLoop = () => {
@@ -811,14 +928,22 @@ const SlimeSceneThree: React.FC = () => {
                     return;
                 }
 
-                ensureFpsLimits();
                 showMouseDown();
 
+                // Time the two halves separately: the autoscaler needs a cost per
+                // particle and a cost per pixel, not a combined frame time. The
+                // texture upload is triggered by tex.needsUpdate inside render(),
+                // so render() counts as pixel work.
+                const tStart = performance.now();
                 updateSlimes(trails, cfg);
                 simulateTrailFollowing(trails, cfg);
-                decayAndBlit(trails, tex, rgba32, cfg);
+                const tParticlesDone = performance.now();
 
+                decayAndBlit(trails, tex, rgba32, cfg);
                 rendererRef.current.render(sceneRef.current, cameraRef.current);
+                const tEnd = performance.now();
+
+                autoscale(tParticlesDone - tStart, tEnd - tParticlesDone, tEnd);
 
                 frameRef.current = (frameRef.current + COLOR_FADE_SPEED) % 360;
                 animId = requestAnimationFrame(renderLoop);
@@ -841,6 +966,16 @@ const SlimeSceneThree: React.FC = () => {
     // ===============
     // UI Handlers
     // ===============
+    // The autoscaler writes the count into a ref, so nothing re-renders on its own.
+    // Poll it only while the readout is actually on screen.
+    useEffect(() => {
+        if (!isShowingSlimeCount) {
+            return;
+        }
+        const id = window.setInterval(() => setSlimeUI({ ...slime.current }), 500);
+        return () => window.clearInterval(id);
+    }, [isShowingSlimeCount]);
+
     const performReset = () => {
         const t = trailsRef.current;
         if (t) {

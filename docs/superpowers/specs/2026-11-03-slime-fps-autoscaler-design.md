@@ -130,9 +130,22 @@ falls below 640px and never exceeds the existing 1920x1080 cap. Reallocate buffe
 once, then lock the resolution.
 
 **Track.** With resolution frozen, re-solve `N` once per second from the live EMA.
-Clamp each change to +/-25% so that thermal throttling produces a glide rather than
-a jump. Enforce a hard floor of 2,000 particles so the population can never collapse
-to nothing again.
+`PIXEL_SHARE` has done its job by this point -- it only decided which scale step to
+pick -- so particles get the entire remainder of the budget, not merely the
+`1 - PIXEL_SHARE` slice. Enforce a hard floor of 2,000 particles so the population
+can never collapse to nothing again.
+
+Both smoothing stages are deliberately asymmetric, because a rising cost threatens
+the 60fps floor while a falling cost is only an opportunity:
+
+- EMA alpha is 0.5 when a measured cost rises, 0.1 when it falls. A single symmetric
+  alpha of 0.1 would lag a thermal throttle by roughly twenty seconds and spend all
+  of it below 60fps.
+- Per-window change is capped at +25% when growing and -50% when shrinking.
+
+A window is also required to contain at least 10 frames before it yields a sample.
+That keeps a handful of frames from defining a cost, and it covers the gap left by a
+pause or a hidden tab, where the window has aged but almost nothing was measured.
 
 Re-calibration is triggered only by a `sceneSize` change (resize or fullscreen),
 where the trail field is already reset. This is why resolution is locked after
@@ -141,14 +154,23 @@ the `DataTexture`, which wipes the trail field and produces a visible pop.
 
 ### Expected outcome
 
-| Display            | Locked scale | Render size | Slimes at 60fps |
-| ------------------ | ------------ | ----------- | --------------- |
-| MacBook 1512x982   | 1.0          | 1512x982    | ~55k            |
-| 2K 2560x1440       | 0.7          | 1792x1008   | ~50k            |
-| 4K (1920x1080 cap) | 0.6          | 1152x648    | ~110k           |
+Replaying the controller against the measured cost constants (4.20 ns/px,
+74 ns/particle):
 
-Against the current behaviour, which collapses to the 100-particle floor. The present
-hard cap is 25,000, so this is roughly 2-4x more particles even at full sharpness.
+| Display          | Render size | Slimes at 60fps | Settles |
+| ---------------- | ----------- | --------------- | ------- |
+| MacBook 1512x982 | 1285x834    | ~96,800         | ~3s     |
+| 2K 2560x1440     | 1343x755    | ~100,100        | ~3s     |
+| 4K 3840x2160     | 1344x756    | ~100,000        | ~3s     |
+
+Steady-state work lands at 11.66-11.67ms against the 11.67ms budget in every case,
+inside a 16.67ms frame. Against the current behaviour, which collapses to the
+100-particle floor, and against the present hard cap of 25,000, this is roughly 4x
+more particles.
+
+Injecting a 1.6x slowdown at t=20s (standing in for thermal throttling) drops the
+population from ~96,800 to ~37,700 and is back inside budget within about four
+seconds, peaking at 12.19ms of work.
 
 ## Structural cleanups
 
@@ -163,6 +185,21 @@ These are in scope because the same code is being rewritten:
   wasted work. The toggle reads the ref directly instead.
 - Controller state moves into a `useRef` so it survives the effect re-runs that caused
   the original stale-closure bug.
+
+## Known characteristics
+
+**144Hz displays.** The controller targets 11.67ms of work regardless of refresh
+rate. On a 144Hz panel the vsync interval is 6.94ms, so the simulation presents on
+every second vsync at roughly 72fps. If a frame drifts past 13.89ms it presents on
+the third instead, briefly showing 48fps. This is well above the 60fps floor that was
+asked for and far better than the present collapse, but it is judder that a
+refresh-aware budget would avoid. Deliberately not done here: targeting a measured
+refresh rate is what root cause 3 was. `BUDGET_SAFETY` is the single knob if this
+proves annoying in practice.
+
+**Resolution is measured at whatever scale happens to be active.** Cost per pixel is
+flat across buffer sizes in the benchmark (4.20, 4.25 and 4.17 ns/px at 2.07M, 1.48M
+and 0.52M pixels), so solving for a different scale than the one measured is sound.
 
 ## Out of scope
 
