@@ -201,6 +201,52 @@ proves annoying in practice.
 flat across buffer sizes in the benchmark (4.20, 4.25 and 4.17 ns/px at 2.07M, 1.48M
 and 0.52M pixels), so solving for a different scale than the one measured is sound.
 
+## Follow-up round, measured in a real browser
+
+The first implementation was tuned against a Node benchmark that did not faithfully
+model the real code. Three corrections came out of measuring in Chromium instead.
+
+**The 1920x1080 cap was the blurry upscale, not the autoscaler.** At a 2560x1440
+viewport the render buffer came out at exactly 1920x1071, pinned by
+`MAX_RENDER_WIDTH`, and CSS-upscaled 1.26x. The controller had budget for native --
+pixels were using only 4.3ms of 11.67ms. The cap is a fixed guess that the measured
+controller supersedes, so it is removed; `calcRenderSize` now clamps only to
+`MIN_RENDER_WIDTH` and native. `PIXEL_SHARE` moves from 0.4 to 0.6, biasing toward
+sharpness, because an upscaled field reads as blurry and that matters more than raw
+count.
+
+**Fusing the two particle passes was worth far less than the microbenchmark claimed.**
+In isolation, merging `updateSlimes` and `simulateTrailFollowing` into one loop
+measured 77.7ns -> 43.2ns per particle, a 1.8x win. In the running simulation the
+cost barely moved, from ~87ns to ~72ns, because the loop is bound by scattered reads
+into a multi-megabyte trail field rather than by array traversal or trig. The fusion
+is kept -- it is strictly less work and simpler -- but it is not the lever.
+
+**The texture upload was the lever.** The trail field is now a single-channel R8
+texture coloured by a fragment shader rather than an RGBA buffer composed in JS.
+That removes the per-pixel 32-bit write, removes the 256-entry hue LUT and its
+rebuild, and cuts texture bandwidth from 13.0 MB/frame to 3.2 MB/frame at 2411x1345.
+The GLSL `hsl2rgb` is the same conversion as `hslToRgb` in `utils/colors`, so the
+palette is unchanged.
+
+Measured at a 2560x1440 viewport, scene 2411x1345, through all three changes:
+
+| State                        | Render buffer | Upscale | Pixel ms | Slimes |
+| ---------------------------- | ------------- | ------- | -------- | ------ |
+| Shipped first round          | 1920x1071     | 1.26x   | 4.32     | 86,100 |
+| Cap removed, PIXEL_SHARE 0.6 | 2411x1345     | 1.0     | 8.08     | 39,500 |
+| Plus R8 texture and shader   | 2411x1345     | 1.0     | 6.15     | 75,000 |
+
+Native resolution and roughly 75k slimes, against a capped, upscaled 1920x1071 at
+86k. A resize now carries the trail field and the particles across rather than
+reseeding: `resizeWorld` nearest-neighbour resamples the field and rescales particle
+coordinates, which fixes a regression where toggling fullscreen restarted the
+simulation.
+
+The particle count, render size and measured fps are now shown on screen behind the
+existing `s` toggle, so the controller's state can be read off the running
+simulation rather than inferred.
+
 ## Out of scope
 
 - **120fps.** Only reachable at 960x540 or below on the CPU path. Revisit after the
