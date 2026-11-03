@@ -53,26 +53,47 @@ const slimeConfigKeys = [
 // ==============
 const TARGET_FPS = 60;
 const FRAME_BUDGET_MS = 1000 / TARGET_FPS;
-// Headroom for GC, the compositor and general browser overhead.
-const BUDGET_SAFETY = 0.7;
-const WORK_BUDGET_MS = FRAME_BUDGET_MS * BUDGET_SAFETY;
-// Share of the work budget resolution is allowed to claim. The rest buys slimes.
-// Biased toward resolution: an upscaled trail field reads as blurry, and a sharp
-// field with fewer slimes looks better than a soft one with more.
-const PIXEL_SHARE = 0.6;
 
-// Resolution is chosen once per display size and then locked. Changing it means
-// reallocating the trail buffers, which wipes the field and pops visibly.
+// Work that happens outside the timed span: rAF dispatch, compositing, GC. A flat
+// 30% reserve used to stand in for this, which threw away a quarter of the frame --
+// a real reading was 12.35ms of frame against 11.67ms of work, so roughly 0.7ms.
+// It is now measured, and only while the simulation is genuinely filling a frame,
+// because below vsync the frame delta is idle time and says nothing.
+const DEFAULT_OVERHEAD_MS = 1.2;
+// Margin kept beyond the measured overhead so a single GC pause does not drop a frame.
+const FRAME_SAFETY_MS = 0.8;
+
+// A ceiling on what resolution may claim, not a target. Resolution has priority: it
+// steps down only when pixels alone would leave almost nothing for slimes.
+const MAX_PIXEL_SHARE = 0.75;
+
 const RENDER_SCALE_STEPS = [1, 0.85, 0.7, 0.6, 0.5, 0.4];
 const MIN_RENDER_WIDTH = 640;
 
 const PARTICLE_FLOOR = 2_000;
-const PARTICLE_CEILING = 250_000;
+const PARTICLE_CEILING = 500_000;
 // Population used during calibration to measure cost per particle.
 const PROBE_PARTICLES = 5_000;
 
-const CALIBRATION_MS = 2_000;
+// Shader compilation, the first texture upload and JIT warm-up all land in the
+// opening frames and are nothing like steady state. Measuring through them inflates
+// cost per pixel badly, and because the resolution used to be locked on that single
+// reading, one cold start pinned the render size low for the rest of the session.
+const WARMUP_MS = 1_200;
+const WARMUP_FRAMES = 60;
+// A prior for cost per pixel, used only to pick the scale calibration starts at.
+// Without it a 4K display spends the whole calibration window at ~22ms frames
+// before the first measurement lands. This is a guess that measurement overwrites
+// within about a second and a half, in either direction -- not a ceiling.
+const ASSUMED_COST_PER_PX = 0.0000022;
+
+const CALIBRATION_MS = 1_500;
 const TRACK_WINDOW_MS = 1_000;
+// Resolution may now be revisited while running: resizeWorld resamples the field,
+// so a change carries the simulation across instead of resetting it.
+const SCALE_COOLDOWN_MS = 4_000;
+// Only step up when the larger size fits with room to spare, so it cannot oscillate.
+const SCALE_UP_HEADROOM = 0.85;
 // Asymmetric smoothing. A cost going *up* threatens the 60fps floor, so react
 // fast; a cost going down is only an opportunity, so grow slowly and stay stable.
 // A single symmetric alpha of 0.1 would lag a thermal throttle by ~20s, spending
@@ -189,8 +210,12 @@ function calcRenderSize(displayWidth: number, displayHeight: number, autoScale: 
 }
 
 // Largest scale step whose pixel cost fits the pixel share of the work budget.
-function solveRenderScale(displayWidth: number, displayHeight: number, costPerPx: number) {
-    const pixelBudgetMs = WORK_BUDGET_MS * PIXEL_SHARE;
+function solveRenderScale(
+    displayWidth: number,
+    displayHeight: number,
+    costPerPx: number,
+    pixelBudgetMs: number
+) {
     for (const step of RENDER_SCALE_STEPS) {
         const { renderWidth, renderHeight } = calcRenderSize(displayWidth, displayHeight, step);
         if (renderWidth * renderHeight * costPerPx <= pixelBudgetMs) {
@@ -620,6 +645,14 @@ const SlimeSceneThree: React.FC = () => {
         samples: 0,
         settled: false,
         fps: 0,
+        warmupDone: false,
+        warmupFrames: 0,
+        lastFrameTs: 0,
+        frameDeltaMs: 0,
+        overheadMs: DEFAULT_OVERHEAD_MS,
+        budgetMs: FRAME_BUDGET_MS - DEFAULT_OVERHEAD_MS - FRAME_SAFETY_MS,
+        scale: 1,
+        lastScaleChange: 0,
     });
 
     useEffect(
@@ -820,7 +853,24 @@ const SlimeSceneThree: React.FC = () => {
                 c.costPerParticle = 0;
                 c.samples = 0;
                 c.settled = false;
+                c.warmupDone = false;
+                c.warmupFrames = 0;
+                c.lastFrameTs = 0;
+                c.frameDeltaMs = 0;
+                c.scale = autoScale;
                 applyParticleCount(PROBE_PARTICLES);
+
+                const guess = solveRenderScale(
+                    sceneSize.displayWidth,
+                    sceneSize.displayHeight,
+                    ASSUMED_COST_PER_PX,
+                    c.budgetMs * MAX_PIXEL_SHARE
+                );
+                if (guess !== autoScale) {
+                    c.scale = guess;
+                    c.lastFrameTs = 0;
+                    setAutoScale(guess);
+                }
             };
 
             const ema = (prev: number, next: number, samples: number) => {
@@ -840,9 +890,34 @@ const SlimeSceneThree: React.FC = () => {
                     return;
                 }
 
+                // Frame-to-frame delta, used to estimate the work that happens
+                // outside the timed span.
+                const delta = c.lastFrameTs > 0 ? now - c.lastFrameTs : 0;
+                c.lastFrameTs = now;
+
+                // Discard warm-up entirely rather than averaging through it.
+                if (!c.warmupDone) {
+                    c.warmupFrames++;
+                    if (c.warmupFrames < WARMUP_FRAMES || now - c.windowStart < WARMUP_MS) {
+                        return;
+                    }
+                    c.warmupDone = true;
+                    c.windowStart = now;
+                    c.frames = 0;
+                    c.pixMs = 0;
+                    c.partMs = 0;
+                    return;
+                }
+
                 c.frames++;
                 c.partMs += partMs;
                 c.pixMs += pixMs;
+                if (delta > 0) {
+                    c.frameDeltaMs =
+                        c.frameDeltaMs === 0
+                            ? delta
+                            : c.frameDeltaMs + (delta - c.frameDeltaMs) * 0.1;
+                }
 
                 const windowMs = c.phase === 'calibrating' ? CALIBRATION_MS : TRACK_WINDOW_MS;
                 if (now - c.windowStart < windowMs || c.frames < MIN_WINDOW_FRAMES) {
@@ -850,9 +925,22 @@ const SlimeSceneThree: React.FC = () => {
                 }
 
                 c.fps = Math.round((c.frames * 1000) / (now - c.windowStart));
+                const workMs = (c.partMs + c.pixMs) / c.frames;
                 const count = Math.max(1, particlesRef.current.length);
                 c.costPerPx = ema(c.costPerPx, c.pixMs / c.frames / pixelCount, c.samples);
                 c.costPerParticle = ema(c.costPerParticle, c.partMs / c.frames / count, c.samples);
+
+                // The gap between a frame and the work inside it only means anything
+                // while the simulation is actually filling the frame. Under vsync the
+                // delta is idle time and would read as enormous overhead.
+                if (c.frameDeltaMs > FRAME_BUDGET_MS * 1.05 && c.frameDeltaMs > workMs) {
+                    c.overheadMs += (c.frameDeltaMs - workMs - c.overheadMs) * 0.25;
+                }
+                c.budgetMs = Math.max(
+                    FRAME_BUDGET_MS * 0.4,
+                    FRAME_BUDGET_MS - c.overheadMs - FRAME_SAFETY_MS
+                );
+
                 c.samples++;
                 c.frames = 0;
                 c.pixMs = 0;
@@ -866,11 +954,15 @@ const SlimeSceneThree: React.FC = () => {
                         render: `${width}x${height}`,
                         scale: sceneSize.scale,
                         slimes: slime.current.slimes.value,
+                        fps: c.fps,
                         nsPerPx: c.costPerPx * 1e6,
                         nsPerParticle: c.costPerParticle * 1e6,
                         pixMs: pixelCount * c.costPerPx,
                         partMs: slime.current.slimes.value * c.costPerParticle,
-                        budgetMs: WORK_BUDGET_MS,
+                        workMs,
+                        frameDeltaMs: c.frameDeltaMs,
+                        overheadMs: c.overheadMs,
+                        budgetMs: c.budgetMs,
                     };
                 }
 
@@ -879,24 +971,47 @@ const SlimeSceneThree: React.FC = () => {
                     return;
                 }
 
+                // Resolution is the priority, so it is solved first and gets as much
+                // of the budget as MAX_PIXEL_SHARE allows. Slimes take the remainder.
+                const pixelLimit = c.budgetMs * MAX_PIXEL_SHARE;
+                const wanted = solveRenderScale(
+                    sceneSize.displayWidth,
+                    sceneSize.displayHeight,
+                    c.costPerPx,
+                    pixelLimit
+                );
+
                 if (c.phase === 'calibrating') {
                     c.phase = 'tracking';
-                    // Changing the scale rebuilds the scene and re-runs this effect.
-                    // The key is unchanged, so the controller resumes in tracking.
-                    setAutoScale(
-                        solveRenderScale(
-                            sceneSize.displayWidth,
-                            sceneSize.displayHeight,
-                            c.costPerPx
-                        )
-                    );
+                    c.lastScaleChange = now;
+                    c.scale = wanted;
+                    c.lastFrameTs = 0;
+                    setAutoScale(wanted);
                     return;
                 }
 
-                // Resolution is locked now, so slimes get the whole remainder of the
-                // budget -- not just the 1 - PIXEL_SHARE slice. PIXEL_SHARE only ever
-                // decided which scale step to pick.
-                const particleBudgetMs = Math.max(0, WORK_BUDGET_MS - pixelCount * c.costPerPx);
+                // Unlike before, resolution is not frozen for the session. A cold or
+                // unlucky calibration can be corrected once the costs settle, and a
+                // change no longer resets the simulation.
+                if (wanted !== c.scale && now - c.lastScaleChange >= SCALE_COOLDOWN_MS) {
+                    const target = calcRenderSize(
+                        sceneSize.displayWidth,
+                        sceneSize.displayHeight,
+                        wanted
+                    );
+                    const predicted = target.renderWidth * target.renderHeight * c.costPerPx;
+                    // Stepping down is always allowed; stepping up needs slack, so
+                    // the two directions cannot chase each other.
+                    if (wanted < c.scale || predicted <= pixelLimit * SCALE_UP_HEADROOM) {
+                        c.lastScaleChange = now;
+                        c.scale = wanted;
+                        c.lastFrameTs = 0;
+                        setAutoScale(wanted);
+                        return;
+                    }
+                }
+
+                const particleBudgetMs = Math.max(0, c.budgetMs - pixelCount * c.costPerPx);
                 const target = particleBudgetMs / c.costPerParticle;
 
                 const current = slime.current.slimes.value;

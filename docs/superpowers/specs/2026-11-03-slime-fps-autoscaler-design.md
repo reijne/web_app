@@ -247,6 +247,50 @@ The particle count, render size and measured fps are now shown on screen behind 
 existing `s` toggle, so the controller's state can be read off the running
 simulation rather than inferred.
 
+## Third round: the budget itself was wrong
+
+A reading from the deployed site -- `13,300 slimes, 990x568, 81 fps` -- showed two
+further faults, both in this design rather than in the old code.
+
+**A quarter of the frame was being thrown away.** `BUDGET_SAFETY = 0.7` reserved 5ms
+of every frame for overhead that was never measured. The reading showed 81fps against
+an 11.67ms work budget, so the real overhead was about 0.7ms. The reserve is now
+measured: frame-to-frame delta minus work time, sampled only while the simulation is
+actually filling a frame, since below vsync the delta is idle time and would read as
+enormous overhead. The budget became ~14.7ms instead of 11.67ms.
+
+**Resolution was decided on the worst data available and then frozen.** Calibration
+measured the opening two seconds, which contain shader compilation, the first texture
+upload and JIT warm-up. Measured directly, the first window reads roughly 50% high
+(8.67 vs 5.75 ns/px settled) and on a slower machine far worse, which is how a 990x568
+render size got chosen. Three changes:
+
+- The first 1.2s / 60 frames are discarded rather than averaged in.
+- Resolution is no longer locked for the session. It is re-solved each tracking
+  window, with a 4s cooldown and a requirement that a step up fits with 15% to spare.
+  This is only safe because `resizeWorld` now carries the field across a resize.
+- Calibration starts from a prior (`ASSUMED_COST_PER_PX`) instead of always at native,
+  so a 4K display does not spend its calibration window at 22ms frames.
+
+`PIXEL_SHARE` becomes `MAX_PIXEL_SHARE = 0.75`, a ceiling rather than a target.
+Resolution now has priority and steps down only when pixels would leave nothing for
+slimes, which is the stated preference: native resolution first, then as many slimes
+as fit, holding 60fps.
+
+Measured in Chromium, all at native resolution with no upscale:
+
+| Viewport  | Scene     | Slimes  | fps   | Work / budget |
+| --------- | --------- | ------- | ----- | ------------- |
+| 1500x900  | 1351x805  | 180,900 | 68-84 | 14.5 / 14.67  |
+| 2560x1440 | 2411x1345 | 116,100 | 73-81 | 13.6 / 14.67  |
+| 3840x2160 | 3691x2065 | 62,800  | 66-71 | 14.1 / 14.67  |
+
+The self-correcting path was verified by forcing a cold 4K load: the controller
+stepped 1.0 -> 0.7 -> 0.6 while costs were still inflated, then back up to 0.7 once
+they settled, and held. Under the previous design it would have stayed at 0.6 for the
+session. `PARTICLE_CEILING` rises from 250,000 to 500,000, since the budget now
+reaches it.
+
 ## Out of scope
 
 - **120fps.** Only reachable at 960x540 or below on the CPU path. Revisit after the
