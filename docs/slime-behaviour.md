@@ -3,7 +3,12 @@
 What the simulation must do, and the checks that catch it when it stops doing them.
 Every item here is something that has actually broken at least once.
 
-Code: `src/Projects/Slime/index.tsx`. Design history: `docs/superpowers/specs/2026-11-03-slime-fps-autoscaler-design.md`.
+Code: `src/Projects/Slime/index.tsx`, with the maths in `src/Projects/Slime/simulation.ts`.
+Tests: `src/Projects/Slime/simulation.test.ts`. Design history:
+`docs/superpowers/specs/2026-11-03-slime-fps-autoscaler-design.md`.
+
+`npm run deploy` runs the tests first and stops if any fail, so nothing below needs
+remembering to run. The checklist at the end covers only what the tests cannot see.
 
 ## Invariants
 
@@ -44,9 +49,28 @@ window. The opening seconds contain shader compilation, the first texture upload
 JIT warm-up, and measure roughly 50% high; anything locked on that reading stays wrong
 for the session.
 
+## What the tests cover
+
+`simulation.ts` holds the maths with no React, Three.js or DOM in it, precisely so
+invariants 1, 2, 4, 5 and 6 can be asserted. Each test names the symptom as it
+appeared on screen, because that is how the next one will be reported too. Several
+also pin the *old, broken* behaviour alongside the fix -- the naive `elapsed >=
+16.67ms` gate yielding 48 steps/sec on 144Hz, and the asymmetric filter settling
+about 12% above the truth -- so the tests fail if anyone reintroduces either.
+
+One caveat worth knowing if a test ever needs changing: an unbiased EMA still has a
+standard deviation of roughly `truth * noise * sqrt(a / (2 - a))` around its mean, so
+asserting on a single final reading proves nothing about bias. The bias test averages
+over the tail of the run instead. The first version of that test failed for exactly
+this reason, on a correct implementation.
+
+Invariant 3 (resizing never resets) and the feel of the thing are not covered, and
+cannot cheaply be. That is what the checklist below is for.
+
 ## Before deploying
 
-Run the simulation for about 30 seconds and press `s` for the readout
+The tests run automatically. These are the ones that need eyes: run the simulation
+for about 30 seconds and press `s` for the readout
 (`slimes . render size . steps per second`).
 
 - [ ] Steps per second reads 60 and stays there. A varying number means the machine
