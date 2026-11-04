@@ -53,6 +53,11 @@ const slimeConfigKeys = [
 // ==============
 const TARGET_FPS = 60;
 const FRAME_BUDGET_MS = 1000 / TARGET_FPS;
+// Fixed simulation timestep. Movement is per step, not per second, so letting the
+// step rate follow the frame rate made the slimes visibly race whenever there was
+// headroom and lurch the moment the population grew. One step per sixtieth of a
+// second keeps the motion identical whatever the display and the load are doing.
+const SIM_STEP_MS = FRAME_BUDGET_MS;
 
 // Work that happens outside the timed span: rAF dispatch, compositing, GC. A flat
 // 30% reserve used to stand in for this, which threw away a quarter of the frame --
@@ -63,17 +68,29 @@ const DEFAULT_OVERHEAD_MS = 1.2;
 // Margin kept beyond the measured overhead so a single GC pause does not drop a frame.
 const FRAME_SAFETY_MS = 0.8;
 
-// A ceiling on what resolution may claim, not a target. Resolution has priority: it
-// steps down only when pixels alone would leave almost nothing for slimes.
-const MAX_PIXEL_SHARE = 0.75;
-
 const RENDER_SCALE_STEPS = [1, 0.85, 0.7, 0.6, 0.5, 0.4];
-const MIN_RENDER_WIDTH = 640;
 
-const PARTICLE_FLOOR = 2_000;
+// Resolution never falls below this many pixels. Below roughly 1920x1080 the
+// individual cells start to read as pixels, which defeats the point: the image is
+// supposed to come from many slimes blending together, not from a coarse grid.
+// Resolution therefore has priority over population and is not traded away for it.
+const TARGET_MIN_PIXELS = 1920 * 1080;
+
+// A population small enough to look sparse is not worth holding 60fps for. If the
+// machine cannot sustain 60fps at this many slimes and the minimum resolution, the
+// frame rate is allowed to fall instead -- toward 30fps rather than toward an empty,
+// low-resolution canvas.
+const PARTICLE_FLOOR = 25_000;
 const PARTICLE_CEILING = 500_000;
-// Population used during calibration to measure cost per particle.
-const PROBE_PARTICLES = 5_000;
+// What resolution must leave room for. Reserving only PARTICLE_FLOOR means a 4K
+// display spends half a minute strangling the population down to the bare minimum
+// before it finally concedes a single resolution step -- correct by the priority
+// order, but a horrible way to watch it happen. Reserving a population that still
+// looks like something makes the trade immediately instead.
+const RESOLUTION_RESERVE_PARTICLES = 60_000;
+// Calibration probes at the floor rather than at some small number, so the opening
+// seconds already look like the simulation instead of a sparse preview.
+const PROBE_PARTICLES = PARTICLE_FLOOR;
 
 // Shader compilation, the first texture upload and JIT warm-up all land in the
 // opening frames and are nothing like steady state. Measuring through them inflates
@@ -92,20 +109,24 @@ const TRACK_WINDOW_MS = 1_000;
 // Resolution may now be revisited while running: resizeWorld resamples the field,
 // so a change carries the simulation across instead of resetting it.
 const SCALE_COOLDOWN_MS = 4_000;
+// Population only ever eases toward its target so density blooms rather than jumps.
+
 // Only step up when the larger size fits with room to spare, so it cannot oscillate.
 const SCALE_UP_HEADROOM = 0.85;
-// Asymmetric smoothing. A cost going *up* threatens the 60fps floor, so react
-// fast; a cost going down is only an opportunity, so grow slowly and stay stable.
-// A single symmetric alpha of 0.1 would lag a thermal throttle by ~20s, spending
-// all of it below 60fps.
-const COST_EMA_ALPHA_RISING = 0.5;
-const COST_EMA_ALPHA_FALLING = 0.1;
+// Symmetric, deliberately. An earlier version reacted fast to a rising cost and
+// slowly to a falling one, meaning to defend the frame rate. That makes a biased
+// estimator: with noise around a steady value it ratchets toward the upper tail and
+// stays there, so the controller came to believe the budget was full and retreated
+// to both floors while actually using half the frame. Defending the frame rate is
+// the control loop's job, below, not the estimator's.
+const COST_EMA_ALPHA = 0.2;
 // Never derive a cost from a handful of frames. Also covers the gap after a pause
 // or a hidden tab, where the window has aged but almost nothing was measured.
 const MIN_WINDOW_FRAMES = 10;
-// Cap steady-state moves so load changes glide instead of snapping. Asymmetric
-// for the same reason as the EMA above: shrinking defends the 60fps floor and
-// should be allowed to happen quickly, growing is only an optimisation.
+// Population always eases toward its target rather than snapping to it, so density
+// blooms in instead of appearing all at once. Asymmetric here is correct -- this is
+// the control loop, not the estimator: shrinking defends the frame rate and may
+// happen quickly, growing is only an optimisation.
 const MAX_GROW_STEP = 0.25;
 const MAX_SHRINK_STEP = 0.5;
 type SlimeConfigKey = (typeof slimeConfigKeys)[number];
@@ -197,10 +218,18 @@ const COLOR_FADE_SPEED = 0.05;
 // used to pin large displays to a blurry upscale even when the frame budget could
 // afford native, which is exactly the judgement the autoscaler now makes on measured
 // evidence instead of a guess.
+// Smallest scale allowed on this display: whatever still yields TARGET_MIN_PIXELS,
+// or native if the display is already smaller than that.
+function renderScaleFloor(displayWidth: number, displayHeight: number) {
+    const displayPixels = displayWidth * displayHeight;
+    if (displayPixels <= TARGET_MIN_PIXELS) {
+        return 1;
+    }
+    return Math.sqrt(TARGET_MIN_PIXELS / displayPixels);
+}
+
 function calcRenderSize(displayWidth: number, displayHeight: number, autoScale: number) {
-    // Never below MIN_RENDER_WIDTH, never above native.
-    const minScale = Math.min(1, MIN_RENDER_WIDTH / displayWidth);
-    const scale = clamp(autoScale, minScale, 1);
+    const scale = clamp(autoScale, renderScaleFloor(displayWidth, displayHeight), 1);
 
     return {
         renderWidth: Math.max(1, Math.floor(displayWidth * scale)),
@@ -216,13 +245,18 @@ function solveRenderScale(
     costPerPx: number,
     pixelBudgetMs: number
 ) {
+    const floor = renderScaleFloor(displayWidth, displayHeight);
     for (const step of RENDER_SCALE_STEPS) {
+        if (step < floor) {
+            break;
+        }
         const { renderWidth, renderHeight } = calcRenderSize(displayWidth, displayHeight, step);
         if (renderWidth * renderHeight * costPerPx <= pixelBudgetMs) {
             return step;
         }
     }
-    return RENDER_SCALE_STEPS[RENDER_SCALE_STEPS.length - 1];
+    // Nothing fits. Hold the minimum resolution and let the frame rate give instead.
+    return floor;
 }
 
 // ==============
@@ -643,7 +677,6 @@ const SlimeSceneThree: React.FC = () => {
         costPerPx: 0,
         costPerParticle: 0,
         samples: 0,
-        settled: false,
         fps: 0,
         warmupDone: false,
         warmupFrames: 0,
@@ -661,6 +694,14 @@ const SlimeSceneThree: React.FC = () => {
                 return;
             }
             let animId = 0;
+            // Accumulator for the fixed simulation timestep. Gating on elapsed >=
+            // SIM_STEP_MS alone would misfire on a 144Hz panel, where ticks land at
+            // 6.9, 13.9, 20.8ms and the first one past the threshold is already 25%
+            // late. Accumulating keeps the long-run rate at exactly 60 steps per
+            // second on any refresh rate; only the spacing jitters, and spacing does
+            // not matter when movement is defined per step.
+            let stepAccumulatorMs = 0;
+            let lastTickMs = 0;
 
             const mouse = { x: 0, y: 0, down: false, size: REPULSION.minRadiusPercent };
 
@@ -852,7 +893,6 @@ const SlimeSceneThree: React.FC = () => {
                 c.costPerPx = 0;
                 c.costPerParticle = 0;
                 c.samples = 0;
-                c.settled = false;
                 c.warmupDone = false;
                 c.warmupFrames = 0;
                 c.lastFrameTs = 0;
@@ -864,7 +904,7 @@ const SlimeSceneThree: React.FC = () => {
                     sceneSize.displayWidth,
                     sceneSize.displayHeight,
                     ASSUMED_COST_PER_PX,
-                    c.budgetMs * MAX_PIXEL_SHARE
+                    c.budgetMs * 0.6
                 );
                 if (guess !== autoScale) {
                     c.scale = guess;
@@ -877,8 +917,7 @@ const SlimeSceneThree: React.FC = () => {
                 if (samples === 0) {
                     return next;
                 }
-                const alpha = next > prev ? COST_EMA_ALPHA_RISING : COST_EMA_ALPHA_FALLING;
-                return prev + (next - prev) * alpha;
+                return prev + (next - prev) * COST_EMA_ALPHA;
             };
 
             const autoscale = (partMs: number, pixMs: number, now: number) => {
@@ -971,9 +1010,13 @@ const SlimeSceneThree: React.FC = () => {
                     return;
                 }
 
-                // Resolution is the priority, so it is solved first and gets as much
-                // of the budget as MAX_PIXEL_SHARE allows. Slimes take the remainder.
-                const pixelLimit = c.budgetMs * MAX_PIXEL_SHARE;
+                // Resolution is the priority: it may claim the whole budget except
+                // what the minimum population needs, and never drops below
+                // TARGET_MIN_PIXELS regardless.
+                const pixelLimit = Math.max(
+                    c.budgetMs * 0.5,
+                    c.budgetMs - RESOLUTION_RESERVE_PARTICLES * c.costPerParticle
+                );
                 const wanted = solveRenderScale(
                     sceneSize.displayWidth,
                     sceneSize.displayHeight,
@@ -1015,14 +1058,13 @@ const SlimeSceneThree: React.FC = () => {
                 const target = particleBudgetMs / c.costPerParticle;
 
                 const current = slime.current.slimes.value;
-                // First solve after calibration jumps straight to the answer; after
-                // that, clamp. A raw spike cannot drive this on its own -- the window
-                // averages at least MIN_WINDOW_FRAMES frames and the EMA smooths again.
-                const next = c.settled
-                    ? clamp(target, current * (1 - MAX_SHRINK_STEP), current * (1 + MAX_GROW_STEP))
-                    : target;
-                c.settled = true;
-                applyParticleCount(next);
+                // Always eased, including the first solve after calibration. Jumping
+                // straight to the answer converges a second or two sooner but the
+                // population visibly pops; growing into it reads as the colony
+                // spreading, which is the whole point of the piece.
+                applyParticleCount(
+                    clamp(target, current * (1 - MAX_SHRINK_STEP), current * (1 + MAX_GROW_STEP))
+                );
             };
 
             const renderLoop = () => {
@@ -1053,10 +1095,29 @@ const SlimeSceneThree: React.FC = () => {
                 const cfg = cfgRef.current!;
 
                 if (!isRunning) {
+                    lastTickMs = 0;
                     rendererRef.current.render(sceneRef.current, cameraRef.current);
                     animId = requestAnimationFrame(renderLoop);
                     return;
                 }
+
+                const tickMs = performance.now();
+                if (lastTickMs > 0) {
+                    // Cap the contribution of one tick so a stall cannot bank time
+                    // and then fire a burst of steps to catch up.
+                    stepAccumulatorMs += Math.min(tickMs - lastTickMs, SIM_STEP_MS * 2);
+                } else {
+                    stepAccumulatorMs = SIM_STEP_MS;
+                }
+                lastTickMs = tickMs;
+
+                if (stepAccumulatorMs < SIM_STEP_MS) {
+                    animId = requestAnimationFrame(renderLoop);
+                    return;
+                }
+                // Never more than one step per frame. If the machine cannot keep up,
+                // the simulation runs slower rather than spiralling trying to catch up.
+                stepAccumulatorMs = Math.min(stepAccumulatorMs - SIM_STEP_MS, SIM_STEP_MS);
 
                 showMouseDown();
 

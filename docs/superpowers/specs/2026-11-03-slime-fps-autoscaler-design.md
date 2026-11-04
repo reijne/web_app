@@ -291,6 +291,59 @@ they settled, and held. Under the previous design it would have stayed at 0.6 fo
 session. `PARTICLE_CEILING` rises from 250,000 to 500,000, since the budget now
 reaches it.
 
+## Fourth round: a biased estimator, and motion tied to frame rate
+
+A reading of `2,000 slimes, 1054x541, 130 fps` is self-contradictory: both floors
+reached while half the frame budget sat unused. Three faults, all introduced by this
+design rather than inherited.
+
+**The cost estimator was biased upward.** `COST_EMA_ALPHA_RISING = 0.5` against
+`FALLING = 0.1` was meant to defend the frame rate by reacting quickly to a rising
+cost. An asymmetric filter is not an unbiased estimator: given noise around a steady
+value it ratchets toward the upper tail and stays there. Over a session both
+`costPerPx` and `costPerParticle` inflate without bound, so the controller believes
+the budget is full, retreats to the particle floor and a low resolution, and runs at
+130fps doing almost nothing. The filter is now symmetric at alpha 0.2. Defending the
+frame rate belongs to the control loop -- which is still asymmetric, and correctly
+so, since the step limits are control and not estimation.
+
+**Motion was tied to frame rate.** Movement is defined per step (`p.x += ca * speed`)
+with no reference to elapsed time, so the slimes moved as fast as the machine
+happened to be drawing. During the opening seconds, at a small probe population, that
+meant several hundred frames per second and visibly frantic motion; as the population
+grew the rate fell to 60-70 and the motion abruptly slowed. Raising the budget in the
+previous round widened that range and made it far more obvious. The simulation now
+runs on a fixed timestep of one step per sixtieth of a second, accumulated rather
+than thresholded so the long-run rate is exactly 60 on any refresh rate -- a plain
+`elapsed >= 16.67ms` gate misfires on a 144Hz panel, where ticks land at 6.9, 13.9
+and 20.8ms. Only the spacing jitters, and spacing is irrelevant when movement is
+defined per step. Measured step rate held at 58-60 across every configuration tested.
+
+**Resolution was being traded away for population.** It is now floored at
+`TARGET_MIN_PIXELS` (1920x1080) and never goes below it, whatever that costs in frame
+rate; below roughly that density the individual cells read as pixels, which defeats
+the premise that the image comes from many slimes blending. The order is now
+resolution, then population, then frame rate: resolution may claim the whole budget
+except what `RESOLUTION_RESERVE_PARTICLES` (60,000) needs. Reserving only
+`PARTICLE_FLOOR` was tried first and is correct by the priority order but awful to
+watch -- a 4K display spent 24 seconds strangling the population to 26,000 before
+conceding a single resolution step.
+
+`PARTICLE_FLOOR` rises from 2,000 to 25,000: a population too sparse to look like
+anything is not worth holding 60fps for, and the frame rate is allowed to fall toward
+30 instead. Population is now always eased toward its target, including the first
+solve after calibration, so density blooms in rather than popping.
+
+Measured in Chromium:
+
+| Viewport  | Render    | Slimes   | Steps/sec | Work / budget |
+| --------- | --------- | -------- | --------- | ------------- |
+| 2560x1440 | 2411x1345 | ~130,000 | 60        | 14.2 / 14.67  |
+| 3840x2160 | 3137x1755 | ~86,000  | 58-60     | 15.0 / 14.67  |
+
+The `s` readout now reports steps per second, which should sit at 60 and stay there.
+A varying number means the machine cannot keep up, not that there is spare headroom.
+
 ## Out of scope
 
 - **120fps.** Only reachable at 960x540 or below on the CPU path. Revisit after the
