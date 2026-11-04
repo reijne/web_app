@@ -434,41 +434,64 @@ const SlimeSceneThree: React.FC = () => {
     // Render-space dimensions the world is currently shaped for. A resize carries
     // the trail field and the particles across instead of starting over, so toggling
     // fullscreen no longer wipes the simulation.
-    const worldSizeRef = useRef<{ w: number; h: number } | null>(null);
+    const worldSizeRef = useRef<{ w: number; h: number; scale: number } | null>(null);
 
-    function resizeWorld(w: number, h: number) {
+    function resizeWorld(w: number, h: number, scale: number) {
         const prev = worldSizeRef.current;
         if (prev && prev.w === w && prev.h === h) {
             return; // already this shape; both scene effects call this
         }
-        const pixels = w * h;
+
+        // ONE factor for both axes, always.
+        //
+        // This previously scaled x by w/prev.w and y by h/prev.h independently, which
+        // stretches the entire simulation whenever the window changes shape -- going
+        // from half a screen to fullscreen widened everything without making it
+        // taller. The buffer is always the display times `scale`, so scale/prevScale
+        // is exactly the factor that leaves content the same size on screen: it comes
+        // out as w/prev.w for a pure resolution change, and as 1 when only the window
+        // shape changed.
+        const factor = prev && prev.scale > 0 ? scale / prev.scale : 1;
+
+        // Centre the old content in the new buffer. This is zero for a pure
+        // resolution change, and only matters when the window changed shape, where
+        // the extra area is new ground for the colony to spread into.
+        const offX = prev ? Math.round((w - prev.w * factor) / 2) : 0;
+        const offY = prev ? Math.round((h - prev.h * factor) / 2) : 0;
+
         const old = trailsRef.current;
-        const next = new Uint8Array(pixels);
+        const next = new Uint8Array(w * h);
         if (old && prev && old.length === prev.w * prev.h) {
-            // Nearest-neighbour resample. Cheap, runs once per resize, and keeps the
-            // pattern on screen rather than dropping to black.
+            // Nearest neighbour. Cheap, runs once per resize, and keeps the pattern
+            // on screen rather than dropping to black.
+            const inv = 1 / factor;
             for (let y = 0; y < h; y++) {
-                const srcRow = (((y * prev.h) / h) | 0) * prev.w;
+                const sy = Math.floor((y - offY) * inv);
+                if (sy < 0 || sy >= prev.h) {
+                    continue;
+                }
+                const srcRow = sy * prev.w;
                 const dstRow = y * w;
                 for (let x = 0; x < w; x++) {
-                    next[dstRow + x] = old[srcRow + (((x * prev.w) / w) | 0)];
+                    const sx = Math.floor((x - offX) * inv);
+                    if (sx >= 0 && sx < prev.w) {
+                        next[dstRow + x] = old[srcRow + sx];
+                    }
                 }
             }
         }
         trailsRef.current = next;
 
-        // Particle coordinates are in render space, so they move with it.
+        // Particle coordinates are in render space, so they move with the field.
         if (prev) {
-            const sx = w / prev.w;
-            const sy = h / prev.h;
             const arr = particlesRef.current;
             for (let i = 0; i < arr.length; i++) {
-                arr[i].x *= sx;
-                arr[i].y *= sy;
+                arr[i].x = arr[i].x * factor + offX;
+                arr[i].y = arr[i].y * factor + offY;
             }
         }
 
-        worldSizeRef.current = { w, h };
+        worldSizeRef.current = { w, h, scale };
     }
 
     function recomputeCfg() {
@@ -556,8 +579,7 @@ const SlimeSceneThree: React.FC = () => {
 
             const { width, height, displayWidth, displayHeight } = sceneSize;
 
-            // buffers use render size (capped at 1920x1080)
-            resizeWorld(width, height);
+            resizeWorld(width, height, sceneSize.scale);
 
             const renderer = new THREE.WebGLRenderer({
                 antialias: false,
@@ -657,7 +679,7 @@ const SlimeSceneThree: React.FC = () => {
             const { width, height } = sceneSize;
 
             // Carries the existing trail and particles across a size change.
-            resizeWorld(width, height);
+            resizeWorld(width, height, sceneSize.scale);
             resizeParticles(slime.current.slimes.value, width, height);
         },
         [sceneSize, reset]
